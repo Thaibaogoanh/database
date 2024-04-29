@@ -52,6 +52,6 @@ Before you begin, make sure you have the following installed on your machine:
 
 To start the backend server, run the following command:
 
-    ```shell
+    ```
     npm start
     ```
