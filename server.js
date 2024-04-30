@@ -20,6 +20,7 @@ app.get("/", (req, res) => {
 });
 
 
+require("./app/models/config.js");
 require("./app/routes/index.js")(app);
 
 
