@@ -1,0 +1,13 @@
+.SlicebarArea{
+    width: 23vw;
+    height: 95vh;
+    outline: solid 2px rgb(101, 197, 197);
+    margin-top: 5vh;
+    margin-bottom: 5vh;
+    border-radius: 5px;
+}
+.activeLink {
+    color: #fff; // Màu trắng cho nền tối
+    background-color: #007bff; // Màu nền xanh dương Bootstrap
+}
+
