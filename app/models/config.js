@@ -1,33 +1,43 @@
-const mysql = require("mysql");
+const sql = require("mssql");
 const fs = require("fs");
 
-// Create a MySQL connection
-const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
+const config = {
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-});
+  server: process.env.DB_SERVER,
+  database: process.env.DB_DATABASE,
+  options: {
+    encrypt: false,
+  },
+};
 
-const sqlScript = fs.readFileSync("./app/models/db.sql", "utf8");
+const sqlScriptPath = "./app/models/db.sql";
 
-const sqlStatements = sqlScript.split(';').filter(statement => statement.trim());
+async function executeSqlScript() {
+  try {
+    const sqlScript = fs.readFileSync(sqlScriptPath, "utf8");
+    const commands = sqlScript.split(/\bGO\b/);
 
-// Connect to the MySQL server
-connection.connect((err) => {
-  if (err) throw err;
-  console.log("Connected to MySQL server");
+    const pool = await sql.connect(config);
 
-  // Execute each SQL statement separately
-  sqlStatements.forEach((sqlStatement) => {
-    connection.query(sqlStatement, (err, result) => {
-      if (err) throw err;
-      console.log("SQL statement executed successfully");
-    });
-  });
+    // Remove last empty command if exists
+    if (commands[commands.length - 1].trim() === "") {
+      commands.pop();
+    }
 
-  connection.end();
-});
+    for (let i = 0; i < commands.length; i++) {
+      await pool.request().query(commands[i]);
+      console.log(`Command ${i + 1} executed successfully`);
+    }
 
-module.exports = connection;
+    await sql.close();
+    console.log("Database setup completed.");
+  } catch (error) {
+    console.error("Error executing commands:", error);
+    sql.close();
+  }
+}
+
+executeSqlScript();
+
+module.exports = sql;
