@@ -19,12 +19,10 @@ app.get("/", (req, res) => {
   res.json({ message: "Coffee Management Dashboard." });
 });
 
-
-require("./app/models/config.js");
+require("./app/models/connection.js");
 require("./app/routes/index.js")(app);
-
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}.`);
+  console.log(`Server is running on port ${PORT} ✨`);
 });
