@@ -1,26 +1,27 @@
-# Backend Installation and Setup Guide
+# Node.js, Express.js, and Microsoft SQL Server Example
 
-This guide will walk you through the steps to install and run the backend using Node.js, Express.js, and MySQL.
+This is a simple example that demonstrates how to set up a Node.js application with Express.js and Microsoft SQL Server.
 
 ## Prerequisites
 
-Before you begin, make sure you have the following installed on your machine:
+Before you can run this application, make sure you have the following installed:
 
-- Node.js: [Download and install Node.js](https://nodejs.org)
-- MySQL: [Download and install MySQL](https://www.mysql.com/downloads/)
+- [Node.js](https://nodejs.org) - JavaScript runtime environment
+- [Express.js](https://expressjs.com) - Web application framework for Node.js
+- [Microsoft SQL Server](https://www.microsoft.com/en-us/sql-server) - Relational database management system
 
 ## Installation
 
-1. Clone the repository:
+1. Clone this repository:
 
     ```shell
-    git clone <repository-url>
+    git clone https://github.com/your-username/your-repo.git
     ```
 
 2. Navigate to the project directory:
 
     ```shell
-    cd <project-directory>
+    cd your-repo
     ```
 
 3. Install the dependencies:
@@ -29,26 +30,33 @@ Before you begin, make sure you have the following installed on your machine:
     npm install
     ```
 
-4. Create a `.env` file in the project root directory and configure the following environment variables:
+4. Set up the database:
+
+    - Create a new database in Microsoft SQL Server.
+    . Create a `.env` file in the project root directory and configure the following environment variables:
 
     ```plaintext
-    DB_HOST=<your-mysql-host>
-    DB_USER=<your-mysql-username>
-    DB_PASSWORD=<your-mysql-password>
-    DB_NAME=<your-mysql-database-name>
+    PORT = <your-local-port>
+    DB_USER = <your-sql-username>
+    DB_PASSWORD = <your-sql-password>
+    DB_SERVER = <your-sql-server> example 'localhost' or '127.0.0.1'
+    DB_DATABASE = <your-sql-database-name> example 'master'
     ```
 
-## Database Setup
-
-1. Create a new MySQL database using the MySQL command line or a GUI tool.
-
-2. Import the database schema by running the following command:
+5. Start the application:
 
     ```shell
-    mysql -u <your-mysql-username> -p <your-mysql-database-name> < database/schema.sql
+    npm start
     ```
 
-## Running the Backend
+## Usage
 
-To start the backend server, run the following command:
-    npm start
+Once the application is running, you can access it by opening your web browser and navigating to `http://localhost:<your-local-port>`.
+
+## Contributing
+
+Contributions are welcome! If you find any issues or have suggestions, please feel free to open an issue or submit a pull request.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
