@@ -1,5 +1,4 @@
 const sql = require("mssql");
-const fs = require("fs");
 
 const config = {
   user: process.env.DB_USER,
@@ -11,33 +10,25 @@ const config = {
   },
 };
 
-const sqlScriptPath = "./app/models/db.sql";
-
-async function executeSqlScript() {
+const connectDB = async () => {
   try {
-    const sqlScript = fs.readFileSync(sqlScriptPath, "utf8");
-    const commands = sqlScript.split(/\bGO\b/);
-
     const pool = await sql.connect(config);
-
-    // Remove last empty command if exists
-    if (commands[commands.length - 1].trim() === "") {
-      commands.pop();
-    }
-
-    for (let i = 0; i < commands.length; i++) {
-      await pool.request().query(commands[i]);
-      console.log(`Command ${i + 1} executed successfully`);
-    }
-
-    await sql.close();
-    console.log("Database setup completed.");
+    return pool;
   } catch (error) {
-    console.error("Error executing commands:", error);
-    sql.close();
+    console.error("💀 Error connecting to MSSQL:", error);
   }
-}
+};
 
-executeSqlScript();
+const closeDB = async () => {
+  try {
+    await sql.close();
+  } catch (error) {
+    console.error("💀 Error closing connection:", error);
+  }
+};
 
-module.exports = sql;
+module.exports = {
+  connectDB,
+  closeDB,
+  sql,
+};
