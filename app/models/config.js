@@ -22,6 +22,7 @@ const connectDB = async () => {
 const closeDB = async () => {
   try {
     await sql.close();
+    console.log("💀 Somethings wrong with the connection");
   } catch (error) {
     console.error("💀 Error closing connection:", error);
   }
