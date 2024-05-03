@@ -20,6 +20,7 @@ async function executeSqlScript() {
     }
     console.log("Database setup completed 🚀");
   } catch (error) {
+    console.error("💀 Error executing SQL script:", error);
     await closeDB();
     console.log("Connection to MSSQL is closed 🚪");
   }
