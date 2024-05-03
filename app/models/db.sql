@@ -364,6 +364,77 @@ IF OBJECT_ID('dbo.proc_InsertEmployee', 'P') IS NOT NULL
     DROP PROCEDURE dbo.proc_InsertEmployee;
 GO
 
+-- CREATE PROCEDURE dbo.proc_InsertEmployee
+--     @cccd NVARCHAR(50),
+--     @address NVARCHAR(500),
+--     @job_type NVARCHAR(100),
+--     @date_of_work DATETIME2,
+--     @gender NVARCHAR(10),
+--     @date_of_birth DATE,
+--     @last_name NVARCHAR(50),
+--     @middle_name NVARCHAR(50),
+--     @first_name NVARCHAR(50),
+--     @list_phone_number VARCHAR(MAX),
+--     @super_ssn INT
+-- AS
+-- BEGIN
+--     SET NOCOUNT ON;
+
+--     -- Check if employee is older than 18 years old
+--     IF DATEDIFF(YEAR, @date_of_birth, GETDATE()) < 18
+--     BEGIN
+--         RAISERROR('Employee must be older than 18 years old', 16, 1);
+--         RETURN;
+--     END;
+
+--     -- Check if phone numbers have valid format
+--     DECLARE @InvalidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
+--     DECLARE @ValidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
+
+--     INSERT INTO @InvalidPhoneNumbers (PhoneNumber)
+--     SELECT value
+--     FROM STRING_SPLIT(@list_phone_number, ',')
+--     WHERE value NOT LIKE '0[35789][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+
+--     -- Raise error for each invalid phone number
+--     DECLARE @ErrorMessage NVARCHAR(MAX);
+--     DECLARE @InvalidPhoneNumber NVARCHAR(20);
+
+--     DECLARE InvalidPhoneNumbersCursor CURSOR FOR
+--     SELECT PhoneNumber FROM @InvalidPhoneNumbers;
+
+--     OPEN InvalidPhoneNumbersCursor;
+--     FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
+
+--     WHILE @@FETCH_STATUS = 0
+--     BEGIN
+--         SET @ErrorMessage = 'Invalid phone number: ' + @InvalidPhoneNumber;
+--         RAISERROR(@ErrorMessage, 16, 1);
+--         FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
+--     END;
+
+--     CLOSE InvalidPhoneNumbersCursor;
+--     DEALLOCATE InvalidPhoneNumbersCursor;
+
+--     -- Insert employee
+--     INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name], [super_ssn])
+--     VALUES (@cccd, @address, @job_type, @date_of_work, @gender, @date_of_birth, @last_name, @middle_name, @first_name, @super_ssn);
+
+--     -- Insert phone numbers for the employee into employee_phone_number table
+--     DECLARE @EmployeeSSN INT;
+--     SELECT @EmployeeSSN = SCOPE_IDENTITY();
+
+--     DECLARE @PhoneNumberList TABLE (PhoneNumber VARCHAR(20));
+
+--     INSERT INTO @PhoneNumberList (PhoneNumber)
+--     SELECT value
+--     FROM STRING_SPLIT(@list_phone_number, ',');
+
+--     INSERT INTO employee_phone_number (ssn, phone_number)
+--     SELECT @EmployeeSSN, PhoneNumber
+--     FROM @PhoneNumberList;
+-- END;
+
 CREATE PROCEDURE dbo.proc_InsertEmployee
     @cccd NVARCHAR(50),
     @address NVARCHAR(500),
@@ -374,7 +445,6 @@ CREATE PROCEDURE dbo.proc_InsertEmployee
     @last_name NVARCHAR(50),
     @middle_name NVARCHAR(50),
     @first_name NVARCHAR(50),
-    @list_phone_number VARCHAR(MAX),
     @super_ssn INT
 AS
 BEGIN
@@ -387,52 +457,16 @@ BEGIN
         RETURN;
     END;
 
-    -- Check if phone numbers have valid format
-    DECLARE @InvalidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
-    DECLARE @ValidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
-
-    INSERT INTO @InvalidPhoneNumbers (PhoneNumber)
-    SELECT value
-    FROM STRING_SPLIT(@list_phone_number, ',')
-    WHERE value NOT LIKE '0[35789][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
-
-    -- Raise error for each invalid phone number
-    DECLARE @ErrorMessage NVARCHAR(MAX);
-    DECLARE @InvalidPhoneNumber NVARCHAR(20);
-
-    DECLARE InvalidPhoneNumbersCursor CURSOR FOR
-    SELECT PhoneNumber FROM @InvalidPhoneNumbers;
-
-    OPEN InvalidPhoneNumbersCursor;
-    FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
-
-    WHILE @@FETCH_STATUS = 0
+    -- Check if employee with the same cccd already exists
+    IF EXISTS (SELECT 1 FROM [employee] WHERE [cccd] = @cccd)
     BEGIN
-        SET @ErrorMessage = 'Invalid phone number: ' + @InvalidPhoneNumber;
-        RAISERROR(@ErrorMessage, 16, 1);
-        FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
+        RAISERROR('Employee with the same cccd already exists', 16, 1);
+        RETURN;
     END;
-
-    CLOSE InvalidPhoneNumbersCursor;
-    DEALLOCATE InvalidPhoneNumbersCursor;
 
     -- Insert employee
     INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name], [super_ssn])
     VALUES (@cccd, @address, @job_type, @date_of_work, @gender, @date_of_birth, @last_name, @middle_name, @first_name, @super_ssn);
-
-    -- Insert phone numbers for the employee into employee_phone_number table
-    DECLARE @EmployeeSSN INT;
-    SELECT @EmployeeSSN = SCOPE_IDENTITY();
-
-    DECLARE @PhoneNumberList TABLE (PhoneNumber VARCHAR(20));
-
-    INSERT INTO @PhoneNumberList (PhoneNumber)
-    SELECT value
-    FROM STRING_SPLIT(@list_phone_number, ',');
-
-    INSERT INTO employee_phone_number (ssn, phone_number)
-    SELECT @EmployeeSSN, PhoneNumber
-    FROM @PhoneNumberList;
 END;
 GO
 
@@ -468,12 +502,89 @@ IF OBJECT_ID('dbo.proc_UpdateEmployee', 'P') IS NOT NULL
     DROP PROCEDURE dbo.proc_UpdateEmployee;
 GO
 
+-- CREATE PROCEDURE dbo.proc_UpdateEmployee
+--     @ssn INT,
+--     @cccd NVARCHAR(50),
+--     @address NVARCHAR(500),
+--     @job_type NVARCHAR(100),
+--     @list_phone_number VARCHAR(MAX),
+--     @super_ssn INT
+-- AS
+-- BEGIN
+--     SET NOCOUNT ON;
+
+--     -- Check if the employee exists
+--     IF NOT EXISTS (SELECT * FROM employee WHERE ssn = @ssn)
+--     BEGIN
+--         RAISERROR('Employee does not exist', 16, 1);
+--         RETURN;
+--     END;
+
+--     -- Check if phone numbers have valid format
+--     DECLARE @InvalidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
+--     DECLARE @ValidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
+
+--     INSERT INTO @InvalidPhoneNumbers (PhoneNumber)
+--     SELECT value
+--     FROM STRING_SPLIT(@list_phone_number, ',')
+--     WHERE value NOT LIKE '0[35789][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+
+--     -- Raise error for each invalid phone number
+--     DECLARE @ErrorMessage NVARCHAR(MAX);
+--     DECLARE @InvalidPhoneNumber NVARCHAR(20);
+
+--     DECLARE InvalidPhoneNumbersCursor CURSOR FOR
+--     SELECT PhoneNumber FROM @InvalidPhoneNumbers;
+
+--     OPEN InvalidPhoneNumbersCursor;
+--     FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
+
+--     WHILE @@FETCH_STATUS = 0
+--     BEGIN
+--         SET @ErrorMessage = 'Invalid phone number: ' + @InvalidPhoneNumber;
+--         RAISERROR(@ErrorMessage, 16, 1);
+--         FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
+--     END;
+
+--     CLOSE InvalidPhoneNumbersCursor;
+--     DEALLOCATE InvalidPhoneNumbersCursor;
+
+--     -- Update employee
+--     UPDATE e
+--     SET e.address = @address,
+--         e.cccd = @cccd,
+--         e.job_type = @job_type,
+--         e.super_ssn = @super_ssn,
+--         e.updated_at = GETDATE()
+--     FROM employee e
+--     WHERE e.ssn = @ssn;
+
+--     -- Update phone numbers for the employee
+--     DECLARE @EmployeeSSN INT;
+--     SELECT @EmployeeSSN = ssn
+--     FROM employee
+--     WHERE ssn = @ssn;
+
+--     DECLARE @PhoneNumberList TABLE (PhoneNumber VARCHAR(20));
+
+--     INSERT INTO @PhoneNumberList (PhoneNumber)
+--     SELECT value
+--     FROM STRING_SPLIT(@list_phone_number, ',');
+
+--     DELETE FROM employee_phone_number
+--     WHERE ssn = @EmployeeSSN;
+
+--     INSERT INTO employee_phone_number (ssn, phone_number)
+--     SELECT @EmployeeSSN, PhoneNumber
+--     FROM @PhoneNumberList;
+-- END;
+
 CREATE PROCEDURE dbo.proc_UpdateEmployee
     @ssn INT,
     @cccd NVARCHAR(50),
     @address NVARCHAR(500),
     @job_type NVARCHAR(100),
-    @list_phone_number VARCHAR(MAX),
+    @date_of_birth DATE,
     @super_ssn INT
 AS
 BEGIN
@@ -486,34 +597,12 @@ BEGIN
         RETURN;
     END;
 
-    -- Check if phone numbers have valid format
-    DECLARE @InvalidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
-    DECLARE @ValidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
-
-    INSERT INTO @InvalidPhoneNumbers (PhoneNumber)
-    SELECT value
-    FROM STRING_SPLIT(@list_phone_number, ',')
-    WHERE value NOT LIKE '0[35789][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
-
-    -- Raise error for each invalid phone number
-    DECLARE @ErrorMessage NVARCHAR(MAX);
-    DECLARE @InvalidPhoneNumber NVARCHAR(20);
-
-    DECLARE InvalidPhoneNumbersCursor CURSOR FOR
-    SELECT PhoneNumber FROM @InvalidPhoneNumbers;
-
-    OPEN InvalidPhoneNumbersCursor;
-    FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
-
-    WHILE @@FETCH_STATUS = 0
+    -- Check if employee is older than 18 years old
+    IF DATEDIFF(YEAR, @date_of_birth, GETDATE()) < 18
     BEGIN
-        SET @ErrorMessage = 'Invalid phone number: ' + @InvalidPhoneNumber;
-        RAISERROR(@ErrorMessage, 16, 1);
-        FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
+        RAISERROR('Employee must be older than 18 years old', 16, 1);
+        RETURN;
     END;
-
-    CLOSE InvalidPhoneNumbersCursor;
-    DEALLOCATE InvalidPhoneNumbersCursor;
 
     -- Update employee
     UPDATE e
@@ -524,25 +613,6 @@ BEGIN
         e.updated_at = GETDATE()
     FROM employee e
     WHERE e.ssn = @ssn;
-
-    -- Update phone numbers for the employee
-    DECLARE @EmployeeSSN INT;
-    SELECT @EmployeeSSN = ssn
-    FROM employee
-    WHERE ssn = @ssn;
-
-    DECLARE @PhoneNumberList TABLE (PhoneNumber VARCHAR(20));
-
-    INSERT INTO @PhoneNumberList (PhoneNumber)
-    SELECT value
-    FROM STRING_SPLIT(@list_phone_number, ',');
-
-    DELETE FROM employee_phone_number
-    WHERE ssn = @EmployeeSSN;
-
-    INSERT INTO employee_phone_number (ssn, phone_number)
-    SELECT @EmployeeSSN, PhoneNumber
-    FROM @PhoneNumberList;
 END;
 GO
 
