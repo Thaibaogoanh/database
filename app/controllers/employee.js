@@ -1,4 +1,4 @@
-const Employee = require("../services/index.js");
+const Employee = require("../services/employee.js");
 
 exports.create = (req, res) => {
   res.json({ message: "Create a new employee." });
@@ -20,13 +20,13 @@ exports.delete = (req, res) => {
   res.json({ message: "Delete an employee with id." });
 };
 
-exports.filterByJobType = async (req, res) => {
+exports.findByFilter = async (req, res) => {
   try {
-    const employees = await Employee.filterByJobType(req, res);
+    const data = await Employee.findByFilter(req, res);
     res.json({
       status: 200,
       message: "Success",
-      data: employees,
+      data,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
