@@ -20,7 +20,7 @@ app.get("/", (req, res) => {
 });
 
 require("./app/models/connection.js");
-require("./app/routes/index.js")(app);
+require("./app/routes/employee.js")(app);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
