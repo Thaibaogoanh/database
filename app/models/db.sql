@@ -89,7 +89,7 @@ BEGIN
       [name] NVARCHAR(50) NOT NULL,
       [relationship] NVARCHAR(50) NOT NULL,
       [phone_number] VARCHAR(50) NOT NULL,
-      [address] VARCHAR(500) NOT NULL,
+      [address] NVARCHAR(500) NOT NULL,
       [date_of_birth] DATE NOT NULL,
       [gender] NVARCHAR(10) NOT NULL,
       [created_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
@@ -690,90 +690,11 @@ END;
 GO
 
 -- 2. Create trigger to count the total price of an order
--- IF OBJECT_ID('dbo.trigger_CountTotalPrice', 'TR') IS NOT NULL
---     DROP TRIGGER dbo.trigger_CountTotalPrice;
--- GO
 
--- CREATE TRIGGER trg_CountTotalPrice
--- ON dbo.size_sale_invoice
--- AFTER INSERT, DELETE, UPDATE
--- AS
--- BEGIN
---   -- @OrderID: Mã hóa đơn
---   DECLARE @OrderID INT, @CustomerID INT, @PromoID INT, @Discount DECIMAL(10, 2), @Total DECIMAL(10, 2)
-
---   -- Lấy mã hóa đơn và mã khuyến mãi từ bản ghi mới nhất
---   SELECT @OrderID = i.sale_invoice_id, @PromoID = (SELECT promotion_id FROM dbo.promotion_order WHERE order_id = (SELECT order_id FROM sale_invoice hd WHERE hd.id = i.sale_invoice_id))
---   FROM inserted i
-
---   -- Tính tổng tiền mới dựa trên các mục trong giỏ hàng
---   SELECT @subTotal = SUM(n.quantity * k.price)
---   FROM [size_sale_invoice] n
---   JOIN [size] k ON n.beverage_name = k.beverage_name AND n.size = k.size
---   WHERE n.sale_invoice_id = @OrderID
-
---   -- Kiểm tra và áp dụng khuyến mãi nếu có
---   IF @PromoID IS NOT NULL
---   BEGIN
---   -- Giả sử @TotalItems là tổng số lượng của sản phẩm trong đơn hàng từ bảng [Nằm trong]
---   DECLARE @quantity INT
-
---   SELECT @TotalItems = nt.số lượng
---   FROM [Nằm trong] nt
---   WHERE nt.mã hđ = @OrderID AND nt.tên = kh.tên AND nt.size = kh.size
---   SELECT @Discount = kh.giá trị khuyến mãi
---   FROM [Khuyến mãi] kh
---   WHERE kh.Mã km = @PromoID AND GETDATE() BETWEEN kh.thời gian bắt đầu AND kh.thời gian kết thúc
---   AND EXISTS (SELECT 1 FROM [Nằm trong] nt WHERE nt.tên = kh.tên AND nt.size = kh.size AND nt.mã hđ = @OrderID AND nt.số lượng >= kh.số lượng)
---   SET @ = @subTotal - @Discount * @TotalItems
---   END
---   -- Cập nhật tổng tiền trong Hóa đơn
---   UPDATE Hóa đơn
---   SET tổng tiền thanh toán = tổng tiền tiền thanh toán + @subTotal
---   WHERE mã hđ = @OrderID
--- END;
-
-
--- CREATE TRIGGER trg_AccumulatePoints
--- ON [sale_invoice]
--- AFTER UPDATE
--- AS
--- BEGIN
---   DECLARE @CustomerID INT, @Total DECIMAL(10, 2), @IsMember BIT
-
--- -- Lấy mã khách hàng và tổng tiền từ bản ghi được cập nhật
-
--- SELECT @CustomerID = khách hàng.mã kh, @Total = tổng tiền thanh toán
-
--- FROM inserted
-
--- -- Kiểm tra xem khách hàng có phải là thành viên hay không
-
--- SELECT @IsMember = CASE WHEN mã kh = '00000000' THEN 0 ELSE 1 END
-
--- FROM Khách hàng
-
--- WHERE mã kh = @CustomerID
-
--- -- Chỉ tích điểm cho khách hàng thành viên
-
--- IF @IsMember = 1
-
--- BEGIN
-
--- UPDATE Khách hàng
-
--- SET điểm tích lũy = điểm tích lũy + @Total * 0.01 -- Giả sử tích điểm 1% giá trị mua hàng
-
--- WHERE mã kh = @CustomerID
-
--- END
-
--- END;
 
 
 -- Stored procedure
--- 1. Create stored procedure to get employee by job type
+-- 1. Create stored procedure to get employee by filter
 IF OBJECT_ID('dbo.proc_GetEmployeeByFilter', 'P') IS NOT NULL
     DROP PROCEDURE dbo.proc_GetEmployeeByFilter;
 GO
@@ -807,7 +728,7 @@ BEGIN
     OFFSET @offset ROWS FETCH NEXT @per_page ROWS ONLY;
 
 
-    -- Get the total count of items
+    -- Get the total count of filtered employees
     SELECT @total_count = COUNT(*)
     FROM employee e
     WHERE (@job_type IS NULL OR e.job_type = @job_type)
@@ -824,10 +745,53 @@ BEGIN
 END;
 GO
 
--- -- Test procedure GetEmployeeByJobType
+-- -- Test procedure GetEmployeeByFilter
 -- DECLARE @job_type NVARCHAR(100);
 -- SET @job_type = N'Phục vụ';
--- EXEC dbo.proc_GetEmployeeByJobType @job_type;
+-- EXEC dbo.proc_GetEmployeeByFilter @job_type;
+
+
+-- 2. Create stored procedure to get employee details
+IF OBJECT_ID('dbo.proc_GetEmployeeDetailsFilter', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.proc_GetEmployeeDetailsFilter;
+GO
+
+CREATE PROCEDURE GetEmployeeDetailsFilter
+    @jobType NVARCHAR(100) = NULL,
+    @gender NVARCHAR(10) = NULL
+AS
+BEGIN
+    SELECT 
+        e.ssn,
+        e.cccd,
+        e.address,
+        e.job_type,
+        e.date_of_work,
+        e.gender,
+        e.date_of_birth,
+        e.last_name,
+        e.middle_name,
+        e.first_name,
+        e.image_url,
+        COUNT(DISTINCT epn.phone_number) AS phone_numbers_count,
+        COUNT(DISTINCT ed.name) AS dependents_count
+    FROM 
+        employee e
+    LEFT JOIN 
+        employee_phone_number epn ON e.ssn = epn.ssn
+    LEFT JOIN 
+        employee_dependent ed ON e.ssn = ed.ssn
+    WHERE 
+        (@jobType IS NULL OR e.job_type = @jobType)
+        AND (@gender IS NULL OR e.gender = @gender)
+    GROUP BY 
+        e.ssn, e.cccd, e.address, e.job_type, e.date_of_work, 
+        e.gender, e.date_of_birth, e.last_name, e.middle_name, 
+        e.first_name, e.image_url
+    ORDER BY 
+        e.last_name, e.first_name;
+END
+GO
 
 
 
@@ -1071,6 +1035,12 @@ VALUES
 ('KL789321654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1991-11-10', N'Đoàn', N'Văn', N'Thành'),
 ('MN321987321', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1994-04-05', N'Võ', N'Thị', N'Mỹ'),
 ('OP654987321', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1987-09-30', N'Đinh', N'Văn', N'Dũng');
+
+INSERT INTO [employee_dependent] ([ssn], [name], [relationship],[phone_number], [address],[date_of_birth],[gender])
+VALUES 
+(1, N'Nguyễn Thị Bình', N'Con', '0123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', '1987-09-30','FEMALE'),
+(1, N'Nguyễn Bình AN', N'Cha', '0123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', '1987-09-30','MALE'),
+(2, N'Nguyễn Văn An', N'Con', '0987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', '1988-02-22','MALE');
 
 
 INSERT INTO [employee_phone_number] ([ssn], [phone_number])

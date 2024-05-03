@@ -34,7 +34,11 @@ const Employee = {
         .input("last_name", sql.NVarChar, last_name)
         .input("middle_name", sql.NVarChar, middle_name)
         .input("first_name", sql.NVarChar, first_name)
-        .input("image_url", sql.NVarChar, `${process.env.URL}/employees/images/${req.file.filename}`);
+        .input(
+          "image_url",
+          sql.NVarChar,
+          `${process.env.URL}/employees/images/${req.file.filename}`
+        );
 
       if (super_ssn) {
         request.input("super_ssn", sql.Int, super_ssn);
@@ -139,8 +143,58 @@ const Employee = {
     }
   },
 
-  findOne: (req, res) => {
-    res.json({ message: "Get an employee with id." });
+  findOne: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const pool = await connectDB();
+
+      const request = pool.request();
+      request.input("ssn", sql.Int, id);
+
+      const [resultEmployee, resultPhone, resultDependent] = await Promise.all([
+        request.query(`
+            SELECT *
+            FROM employee
+            WHERE employee.ssn = @ssn;
+        `),
+        request.query(`
+            SELECT phone_number
+            FROM employee_phone_number
+            WHERE employee_phone_number.ssn = @ssn;
+        `),
+        request.query(`
+            SELECT name, relationship, phone_number, address, date_of_birth, gender, created_at, updated_at
+            FROM employee_dependent
+            WHERE employee_dependent.ssn = @ssn;
+        `),
+      ]);
+      
+      const employee = {
+        ...resultEmployee.recordset[0],
+        phone_numbers: resultPhone.recordset.map((item) => item.phone_number),
+        dependents: resultDependent.recordset.map((item) => ({
+          name: item.name,
+          relationship: item.relationship,
+          phone_number: item.phone_number,
+          address: item.address,
+          date_of_birth: item.date_of_birth,
+          gender: item.gender,
+        })),
+      };
+
+      const timestamp = new Date().toISOString();
+      console.log(
+        `[${timestamp}] \x1b[32mhttp\x1b[0m: ${req.method} ${req.originalUrl} (${res.statusCode} ms) ${res.statusCode}`
+      );
+
+      return {
+        status: 200,
+        message: "Success",
+        data: employee,
+      };
+    } catch (error) {
+      throw new Error(error.message);
+    }
   },
 
   update: (req, res) => {

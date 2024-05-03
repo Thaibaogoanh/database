@@ -24,12 +24,15 @@ exports.getImage = async (req, res) => {
   }
 };
 
-exports.findAll = (req, res) => {
-  res.json({ message: "Get all employees." });
-};
 
-exports.findOne = (req, res) => {
-  res.json({ message: "Get an employee with id." });
+exports.findOne =  async(req, res) => {
+  try {
+    const data = await Employee.findOne(req, res);
+    res.status(200).json(data);
+  }
+  catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 exports.update = (req, res) => {
