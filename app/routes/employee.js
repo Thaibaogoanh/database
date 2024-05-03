@@ -1,16 +1,17 @@
 module.exports = (app) => {
   const employees = require("../controllers/employee.js");
+  const { uploadEmployee, uploadProduct } = require("../models/config.js");
   const express = require("express");
   const router = express.Router();
 
   // Create a new employee
-  router.post("/", employees.create);
+  router.post("/", uploadEmployee.single("image"), employees.create);
 
   // Fitler employees with job type
   router.get("/", employees.findByFilter);
 
-  // Get all employees
-  router.get("/", employees.findAll);
+  // Get employees image
+  router.get("/images/:imageName", employees.getImage);
 
   // Get an employee with id
   router.get("/:id", employees.findOne);
