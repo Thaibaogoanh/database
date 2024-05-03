@@ -242,6 +242,7 @@ BEGIN
       [time] TIME NOT NULL,
       [payment_method] NVARCHAR(50) NOT NULL CHECK (payment_method IN ('CASH', 'ONLINE', 'CARD')),
       [order_id] INT NOT NULL,
+      [total_price] DECIMAL(10,2) NOT NULL,
       PRIMARY KEY ([id]),
       CONSTRAINT [fk_sale_invoice_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id]) ON DELETE CASCADE
     );
@@ -253,6 +254,7 @@ BEGIN
       [size] NVARCHAR(50) NOT NULL,
       [quantity] INT NOT NULL,
       [beverage_name] NVARCHAR(50) NOT NULL,
+      [subTotal] DECIMAL(10,2) NULL,
       [sale_invoice_id] INT NOT NULL,
       PRIMARY KEY ([size],[beverage_name],[sale_invoice_id]),
       CONSTRAINT [fk_size_sale_invoice_size] FOREIGN KEY ([size],[beverage_name]) REFERENCES [size] ([size],[beverage_name]) ON DELETE CASCADE,
@@ -614,12 +616,252 @@ BEGIN
 END;
 GO
 
--- 2. Create trigger to count the total price of order
-IF OBJECT_ID('dbo.trigger_CountTotalPrice', 'TR') IS NOT NULL
-    DROP TRIGGER dbo.trigger_CountTotalPrice;
+-- 2. Create trigger to count the total price of an order
+-- IF OBJECT_ID('dbo.trigger_CountTotalPrice', 'TR') IS NOT NULL
+--     DROP TRIGGER dbo.trigger_CountTotalPrice;
+-- GO
+
+-- CREATE TRIGGER trg_CountTotalPrice
+-- ON dbo.size_sale_invoice
+-- AFTER INSERT, DELETE, UPDATE
+-- AS
+-- BEGIN
+--   -- @OrderID: Mã hóa đơn
+--   DECLARE @OrderID INT, @CustomerID INT, @PromoID INT, @Discount DECIMAL(10, 2), @Total DECIMAL(10, 2)
+
+--   -- Lấy mã hóa đơn và mã khuyến mãi từ bản ghi mới nhất
+--   SELECT @OrderID = i.sale_invoice_id, @PromoID = (SELECT promotion_id FROM dbo.promotion_order WHERE order_id = (SELECT order_id FROM sale_invoice hd WHERE hd.id = i.sale_invoice_id))
+--   FROM inserted i
+
+--   -- Tính tổng tiền mới dựa trên các mục trong giỏ hàng
+--   SELECT @subTotal = SUM(n.quantity * k.price)
+--   FROM [size_sale_invoice] n
+--   JOIN [size] k ON n.beverage_name = k.beverage_name AND n.size = k.size
+--   WHERE n.sale_invoice_id = @OrderID
+
+--   -- Kiểm tra và áp dụng khuyến mãi nếu có
+--   IF @PromoID IS NOT NULL
+--   BEGIN
+--   -- Giả sử @TotalItems là tổng số lượng của sản phẩm trong đơn hàng từ bảng [Nằm trong]
+--   DECLARE @quantity INT
+
+--   SELECT @TotalItems = nt.số lượng
+--   FROM [Nằm trong] nt
+--   WHERE nt.mã hđ = @OrderID AND nt.tên = kh.tên AND nt.size = kh.size
+--   SELECT @Discount = kh.giá trị khuyến mãi
+--   FROM [Khuyến mãi] kh
+--   WHERE kh.Mã km = @PromoID AND GETDATE() BETWEEN kh.thời gian bắt đầu AND kh.thời gian kết thúc
+--   AND EXISTS (SELECT 1 FROM [Nằm trong] nt WHERE nt.tên = kh.tên AND nt.size = kh.size AND nt.mã hđ = @OrderID AND nt.số lượng >= kh.số lượng)
+--   SET @ = @subTotal - @Discount * @TotalItems
+--   END
+--   -- Cập nhật tổng tiền trong Hóa đơn
+--   UPDATE Hóa đơn
+--   SET tổng tiền thanh toán = tổng tiền tiền thanh toán + @subTotal
+--   WHERE mã hđ = @OrderID
+-- END;
+
+
+-- CREATE TRIGGER trg_AccumulatePoints
+-- ON [sale_invoice]
+-- AFTER UPDATE
+-- AS
+-- BEGIN
+--   DECLARE @CustomerID INT, @Total DECIMAL(10, 2), @IsMember BIT
+
+-- -- Lấy mã khách hàng và tổng tiền từ bản ghi được cập nhật
+
+-- SELECT @CustomerID = khách hàng.mã kh, @Total = tổng tiền thanh toán
+
+-- FROM inserted
+
+-- -- Kiểm tra xem khách hàng có phải là thành viên hay không
+
+-- SELECT @IsMember = CASE WHEN mã kh = '00000000' THEN 0 ELSE 1 END
+
+-- FROM Khách hàng
+
+-- WHERE mã kh = @CustomerID
+
+-- -- Chỉ tích điểm cho khách hàng thành viên
+
+-- IF @IsMember = 1
+
+-- BEGIN
+
+-- UPDATE Khách hàng
+
+-- SET điểm tích lũy = điểm tích lũy + @Total * 0.01 -- Giả sử tích điểm 1% giá trị mua hàng
+
+-- WHERE mã kh = @CustomerID
+
+-- END
+
+-- END;
+
+
+-- Stored procedure
+-- 1. Create stored procedure to get employee by job type
+IF OBJECT_ID('dbo.proc_GetEmployeeByFilter', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.proc_GetEmployeeByFilter;
 GO
 
-CREATE TRIGGER trg_CountTotalPrice
+CREATE PROCEDURE dbo.proc_GetEmployeeByFilter (
+  @job_type NVARCHAR(100) = NULL,
+  @phone_number VARCHAR(50) = NULL,
+  @gender NVARCHAR(10) = NULL,
+  @date_of_birth DATE = NULL,
+  @per_page INT = 10,
+  @page INT = 1,
+  @total_count INT OUTPUT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @list_ssn TABLE (ssn INT);
+
+    -- Calculate the offset to skip records based on page size and number
+    DECLARE @offset INT = (@page - 1) * @per_page;
+
+    INSERT INTO @list_ssn (ssn)
+    SELECT e.ssn
+    FROM employee e
+    WHERE (@job_type IS NULL OR e.job_type = @job_type)
+    AND (@gender IS NULL OR e.gender = @gender)
+    AND (@date_of_birth IS NULL OR e.date_of_birth = @date_of_birth)
+    AND (@phone_number IS NULL OR EXISTS (SELECT 1 FROM employee_phone_number p WHERE e.ssn = p.ssn AND p.phone_number = @phone_number))
+    ORDER BY e.ssn
+    OFFSET @offset ROWS FETCH NEXT @per_page ROWS ONLY;
+
+
+    -- Get the total count of items
+    SELECT @total_count = COUNT(*)
+    FROM employee e
+    WHERE (@job_type IS NULL OR e.job_type = @job_type)
+    AND (@gender IS NULL OR e.gender = @gender)
+    AND (@date_of_birth IS NULL OR e.date_of_birth = @date_of_birth)
+    AND (@phone_number IS NULL OR EXISTS (SELECT 1 FROM employee_phone_number p WHERE e.ssn = p.ssn AND p.phone_number = @phone_number));
+
+    SELECT e.*, p.phone_number
+    FROM employee e
+    LEFT JOIN employee_phone_number p ON e.ssn = p.ssn 
+    WHERE e.ssn IN (SELECT ssn FROM @list_ssn)
+    ORDER BY e.ssn;
+
+END;
+GO
+
+-- -- Test procedure GetEmployeeByJobType
+-- DECLARE @job_type NVARCHAR(100);
+-- SET @job_type = N'Phục vụ';
+-- EXEC dbo.proc_GetEmployeeByJobType @job_type;
+
+
+
+
+
+
+
+
+
+
+
+
+-- Function
+-- Hàm tính tổng số lượng sản phẩm đã bán của một loại sản phẩm cụ thể trong một khoảng thời gian nhất định:
+CREATE FUNCTION dbo.CalculateTotalSalesForProduct (
+    @ProductID INT,
+    @StartDate DATE,
+    @EndDate DATE
+)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @TotalSales INT = 0;
+    DECLARE @QuantitySold INT;
+
+    -- Declare cursor
+    DECLARE ProductCursor CURSOR FOR
+        SELECT Quantity
+        FROM Sales
+        WHERE ProductID = @ProductID
+        AND SaleDate BETWEEN @StartDate AND @EndDate;
+
+    -- Open cursor
+    OPEN ProductCursor;
+
+    FETCH NEXT FROM ProductCursor INTO @QuantitySold;
+
+    -- Calculate total quantity sold
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @TotalSales = @TotalSales + @QuantitySold;
+        FETCH NEXT FROM ProductCursor INTO @QuantitySold;
+    END;
+
+    -- Close cursor
+    CLOSE ProductCursor;
+    DEALLOCATE ProductCursor;
+
+    RETURN @TotalSales;
+END;
+GO
+
+-- Hàm kiểm tra xem có đủ nguyên vật liệu còn lại để làm sản phẩm cần thiết không
+CREATE FUNCTION dbo.CheckMaterialAvailability (
+    @ProductID INT
+)
+RETURNS BIT
+AS
+BEGIN
+    DECLARE @MaterialsNeeded TABLE (
+        MaterialID INT,
+        QuantityNeeded INT
+    );
+
+    -- Retrieve information about the materials needed to produce the product
+    INSERT INTO @MaterialsNeeded (MaterialID, QuantityNeeded)
+    SELECT MaterialID, QuantityNeeded
+    FROM ProductMaterials
+    WHERE ProductID = @ProductID;
+
+    DECLARE @MaterialID INT;
+    DECLARE @QuantityNeeded INT;
+    DECLARE @AvailableQuantity INT;
+
+    DECLARE MaterialCursor CURSOR FOR
+    SELECT MaterialID, QuantityNeeded
+    FROM @MaterialsNeeded;
+
+    OPEN MaterialCursor;
+    FETCH NEXT FROM MaterialCursor INTO @MaterialID, @QuantityNeeded;
+
+    -- Check the availability of sufficient materials
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        -- Retrieve the remaining quantity of the material in stock
+        SELECT @AvailableQuantity = Quantity
+        FROM Materials
+        WHERE MaterialID = @MaterialID;
+
+        -- If the remaining quantity is not enough, return 0
+        IF @AvailableQuantity < @QuantityNeeded
+        BEGIN
+            CLOSE MaterialCursor;
+            DEALLOCATE MaterialCursor;
+            RETURN 0;
+        END;
+
+        FETCH NEXT FROM MaterialCursor INTO @MaterialID, @QuantityNeeded;
+    END;
+
+    CLOSE MaterialCursor;
+    DEALLOCATE MaterialCursor;
+
+    -- If there are enough materials, return 1
+    RETURN 1;
+END;
+GO
 
 
 
@@ -693,3 +935,118 @@ CREATE TRIGGER trg_CountTotalPrice
 -- (N'II234567890', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1993-06-15', N'Mai', N'Thị', N'Hương', 12),
 -- (N'JJ345678901', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1988-11-10', N'Đoàn', N'Văn', N'Thành', 13),
 -- (N'KK456789012', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1991-04-05', N'Võ', N'Thị', N'Mỹ', 14);
+
+INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name]) 
+VALUES 
+('AB123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1980-05-15', N'Nguyễn', N'Văn', N'An'),
+('CD987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1985-10-20', N'Trần', N'Thị', N'Bích'),
+('EF456123789', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1990-03-25', N'Lê', N'Hữu', N'Quốc'),
+('GH789456123', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1995-08-10', N'Phạm', N'Thị', N'Hoài'),
+('IJ321654987', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '1998-12-05', N'Hoàng', N'Văn', N'Bảo'),
+('KL321987321', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1987-02-20', N'Ngô', N'Thị', N'Dung'),
+('MN654987321', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1992-07-15', N'Vũ', N'Đình', N'Anh'),
+('OP789321654', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1996-11-30', N'Đặng', N'Thị', N'Ly'),
+('QR987321654', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1989-04-25', N'Trương', N'Văn', N'Tuấn'),
+('ST321789654', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1994-09-10', N'Bùi', N'Thị', N'Nga'),
+('UV123789654', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1986-01-20', N'Lý', N'Văn', N'Hải'),
+('WX987654321', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1993-06-15', N'Mai', N'Thị', N'Hương'),
+('YZ789123654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1988-11-10', N'Đoàn', N'Văn', N'Thành'),
+('AB456987123', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1991-04-05', N'Võ', N'Thị', N'Mỹ'),
+('CD654321789', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1984-09-30', N'Đinh', N'Văn', N'Dũng'),
+('EF123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1981-05-15', N'Nguyễn', N'Văn', N'An'),
+('GH987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1986-10-20', N'Trần', N'Thị', N'Bích'),
+('IJ456123789', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1991-03-25', N'Lê', N'Hữu', N'Quốc'),
+('KL789456123', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1997-08-10', N'Phạm', N'Thị', N'Hoài'),
+('MN321654987', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '1999-12-05', N'Hoàng', N'Văn', N'Bảo'),
+('OP321987321', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1988-02-20', N'Ngô', N'Thị', N'Dung'),
+('QR654987321', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1993-07-15', N'Vũ', N'Đình', N'Anh'),
+('ST789321654', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1997-11-30', N'Đặng', N'Thị', N'Ly'),
+('UV987321654', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1990-04-25', N'Trương', N'Văn', N'Tuấn'),
+('WX321789654', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1995-09-10', N'Bùi', N'Thị', N'Nga'),
+('YZ123789654', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1987-01-20', N'Lý', N'Văn', N'Hải'),
+('AB987654321', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1994-06-15', N'Mai', N'Thị', N'Hương'),
+('CD789123654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1989-11-10', N'Đoàn', N'Văn', N'Thành'),
+('EF456987123', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1992-04-05', N'Võ', N'Thị', N'Mỹ'),
+('GH654321789', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1985-09-30', N'Đinh', N'Văn', N'Dũng'),
+('IJ123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1982-05-15', N'Nguyễn', N'Văn', N'An'),
+('KL987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1987-10-20', N'Trần', N'Thị', N'Bích'),
+('MN456123789', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1992-03-25', N'Lê', N'Hữu', N'Quốc'),
+('OP789456123', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1998-08-10', N'Phạm', N'Thị', N'Hoài'),
+('QR321654987', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '2000-12-05', N'Hoàng', N'Văn', N'Bảo'),
+('ST321987321', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1989-02-20', N'Ngô', N'Thị', N'Dung'),
+('UV654987321', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1994-07-15', N'Vũ', N'Đình', N'Anh'),
+('WX789321654', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1998-11-30', N'Đặng', N'Thị', N'Ly'),
+('YZ987321654', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1991-04-25', N'Trương', N'Văn', N'Tuấn'),
+('AB321789654', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1996-09-10', N'Bùi', N'Thị', N'Nga'),
+('CD123789654', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1988-01-20', N'Lý', N'Văn', N'Hải'),
+('EF987654321', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1995-06-15', N'Mai', N'Thị', N'Hương'),
+('GH789123654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1990-11-10', N'Đoàn', N'Văn', N'Thành'),
+('IJ456987123', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1993-04-05', N'Võ', N'Thị', N'Mỹ'),
+('KL654321789', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1986-09-30', N'Đinh', N'Văn', N'Dũng'),
+('MN123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1983-05-15', N'Nguyễn', N'Văn', N'An'),
+('OP987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1988-10-20', N'Trần', N'Thị', N'Bích'),
+('QR456123789', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1993-03-25', N'Lê', N'Hữu', N'Quốc'),
+('ST789456123', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1999-08-10', N'Phạm', N'Thị', N'Hoài'),
+('UV321654987', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '2001-12-05', N'Hoàng', N'Văn', N'Bảo'),
+('WX321987321', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1990-02-20', N'Ngô', N'Thị', N'Dung'),
+('YZ654987321', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1995-07-15', N'Vũ', N'Đình', N'Anh'),
+('AB789321654', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1999-11-30', N'Đặng', N'Thị', N'Ly'),
+('CD987321654', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1992-04-25', N'Trương', N'Văn', N'Tuấn'),
+('EF321789654', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1997-09-10', N'Bùi', N'Thị', N'Nga'),
+('GH123789654', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1989-01-20', N'Lý', N'Văn', N'Hải'),
+('IJ987654321', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1996-06-15', N'Mai', N'Thị', N'Hương'),
+('KL789321654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1991-11-10', N'Đoàn', N'Văn', N'Thành'),
+('MN321987321', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1994-04-05', N'Võ', N'Thị', N'Mỹ'),
+('OP654987321', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1987-09-30', N'Đinh', N'Văn', N'Dũng');
+
+
+INSERT INTO [employee_phone_number] ([ssn], [phone_number])
+VALUES 
+(1, '0123456789'),
+(2, '0987654321'),
+(3, '0123456789'),
+(4, '0987654321'),
+(5, '0123456789'),
+(6, '0987654321'),
+(7, '0123456789'),
+(8, '0987654321'),
+(9, '0123456789'),
+(10, '0987654321'),
+(11, '0123456789'),
+(12, '0987654321'),
+(13, '0123456789'),
+(14, '0987654321'),
+(15, '0123456789'),
+(16, '0987654321'),
+(17, '0123456789'),
+(18, '0987654321'),
+(19, '0123456789'),
+(20, '0987654321'),
+(21, '0123456789'),
+(22, '0987654321'),
+(23, '0123456789'),
+(24, '0987654321'),
+(25, '0123456789'),
+(26, '0987654321'),
+(27, '0123456789'),
+(28, '0987654321'),
+(29, '0123456789'),
+(30, '0987654321'),
+(1, '0999999999'),
+(2, '0888888888'),
+(3, '0777777777'),
+(4, '0123123444'),
+(5, '7877867687'),
+(6, '2344324234'),
+(7, '5454123534'),
+(8, '4321231231'),
+(9, '0738274823'),
+(10, '0782374861');
+
+
+-- -- Declare a variable to hold the job type you want to query
+-- DECLARE @job_type NVARCHAR(100);
+-- SET @job_type = N'Phục vụ'; -- Replace 'YourJobTypeHere' with the actual job type you want to query
+
+-- -- Execute the stored procedure with the specified job type
+-- EXEC dbo.proc_GetEmployeeByJobType @job_type;
