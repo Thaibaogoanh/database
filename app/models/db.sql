@@ -28,6 +28,7 @@ BEGIN
       [last_name] NVARCHAR(50) NOT NULL,
       [middle_name] NVARCHAR(50) NOT NULL,
       [first_name] NVARCHAR(50) NOT NULL,
+      [image_url] NVARCHAR(200) DEFAULT NULL,
       [super_ssn] INT DEFAULT NULL,
       [created_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
       [updated_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
@@ -168,6 +169,7 @@ IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'beverage')
 BEGIN
     CREATE TABLE [beverage] (
       [beverage_name] NVARCHAR(50) NOT NULL,
+      [image_url] NVARCHAR(200) DEFAULT NULL,
       PRIMARY KEY ([beverage_name])
     );
 END;
@@ -445,6 +447,7 @@ CREATE PROCEDURE dbo.proc_InsertEmployee
     @last_name NVARCHAR(50),
     @middle_name NVARCHAR(50),
     @first_name NVARCHAR(50),
+    @image_url NVARCHAR(200),
     @super_ssn INT
 AS
 BEGIN
@@ -465,8 +468,8 @@ BEGIN
     END;
 
     -- Insert employee
-    INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name], [super_ssn])
-    VALUES (@cccd, @address, @job_type, @date_of_work, @gender, @date_of_birth, @last_name, @middle_name, @first_name, @super_ssn);
+    INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name], [super_ssn],[image_url])
+    VALUES (@cccd, @address, @job_type, @date_of_work, @gender, @date_of_birth, @last_name, @middle_name, @first_name, @super_ssn,@image_url);
 END;
 GO
 
