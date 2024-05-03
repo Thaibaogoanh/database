@@ -41,6 +41,7 @@ Before you can run this application, make sure you have the following installed:
     DB_PASSWORD = <your-sql-password>
     DB_SERVER = <your-sql-server> example 'localhost' or '127.0.0.1'
     DB_DATABASE = <your-sql-database-name> example 'master'
+    URL = <http://localhost:${PORT}/api/v1> replace the PORT with the PORT above
     ```
 
 5. Start the application:
