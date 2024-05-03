@@ -1,4 +1,36 @@
 const sql = require("mssql");
+const fs = require("fs");
+const multer = require("multer");
+
+const employeeStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = "upload/employee";
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, "upload/employee");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const uploadEmployee = multer({ storage: employeeStorage });
+
+const productStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = "upload/product";
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, "upload/product");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const uploadProduct = multer({ storage: productStorage });
 
 const config = {
   user: process.env.DB_USER,
@@ -32,4 +64,6 @@ module.exports = {
   connectDB,
   closeDB,
   sql,
+  uploadEmployee,
+  uploadProduct,
 };
