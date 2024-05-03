@@ -168,18 +168,32 @@ const Employee = {
             WHERE employee_dependent.ssn = @ssn;
         `),
       ]);
-      
+
+      if (resultEmployee.recordset.length === 0) {
+        return {
+          status: 404,
+          message: "Employee not found",
+          data: null,
+        };
+      }
+
       const employee = {
         ...resultEmployee.recordset[0],
-        phone_numbers: resultPhone.recordset.map((item) => item.phone_number),
-        dependents: resultDependent.recordset.map((item) => ({
-          name: item.name,
-          relationship: item.relationship,
-          phone_number: item.phone_number,
-          address: item.address,
-          date_of_birth: item.date_of_birth,
-          gender: item.gender,
-        })),
+        phone_numbers:
+          resultPhone.recordset.length == 0
+            ? null
+            : resultPhone.recordset.map((item) => item.phone_number),
+        dependents:
+          resultDependent.recordset == 0
+            ? null
+            : resultDependent.recordset.map((item) => ({
+                name: item.name,
+                relationship: item.relationship,
+                phone_number: item.phone_number,
+                address: item.address,
+                date_of_birth: item.date_of_birth,
+                gender: item.gender,
+              })),
       };
 
       const timestamp = new Date().toISOString();
