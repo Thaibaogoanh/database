@@ -3,6 +3,12 @@ module.exports = (app) => {
   const { uploadEmployee, uploadProduct } = require("../models/config.js");
   const express = require("express");
   const router = express.Router();
+  const swaggerUi = require("swagger-ui-express");
+  const swaggerDocument = require("../../swagger.json");
+
+  // Swagger UI
+  router.use("/api-docs", swaggerUi.serve);
+  router.get("/api-docs", swaggerUi.setup(swaggerDocument));
 
   // Create a new employee
   router.post("/", uploadEmployee.single("image"), employees.create);

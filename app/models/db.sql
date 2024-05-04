@@ -448,7 +448,8 @@ CREATE PROCEDURE dbo.proc_InsertEmployee
     @middle_name NVARCHAR(50),
     @first_name NVARCHAR(50),
     @image_url NVARCHAR(200),
-    @super_ssn INT
+    @super_ssn INT,
+    @ssn INT OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -467,9 +468,19 @@ BEGIN
         RETURN;
     END;
 
+    -- Check if the super_ssn exists
+    IF @super_ssn IS NOT NULL AND NOT EXISTS (SELECT 1 FROM [employee] WHERE [ssn] = @super_ssn)
+    BEGIN
+        RAISERROR('Super ssn does not exist', 16, 1);
+        RETURN;
+    END;
+
     -- Insert employee
     INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name], [super_ssn],[image_url])
     VALUES (@cccd, @address, @job_type, @date_of_work, @gender, @date_of_birth, @last_name, @middle_name, @first_name, @super_ssn,@image_url);
+
+    -- Get the ssn of the inserted employee
+    SET @ssn = SCOPE_IDENTITY();
 END;
 GO
 
@@ -607,6 +618,14 @@ BEGIN
         RAISERROR('Employee must be older than 18 years old', 16, 1);
         RETURN;
     END;
+
+    -- Check if the super_ssn exists
+    IF @super_ssn IS NOT NULL AND NOT EXISTS (SELECT 1 FROM [employee] WHERE [ssn] = @super_ssn)
+    BEGIN
+        RAISERROR('Super ssn does not exist', 16, 1);
+        RETURN;
+    END;
+
 
     -- Update employee
     UPDATE e

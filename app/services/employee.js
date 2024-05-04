@@ -19,7 +19,11 @@ const Employee = {
       } = req.body;
 
       if (!req.file) {
-        throw new Error("Image is required");
+        return res.status(400).json({
+          status: 400,
+          message: "Image is required",
+          data: null,
+        });
       }
 
       const pool = await connectDB();
@@ -46,26 +50,34 @@ const Employee = {
         request.input("super_ssn", sql.Int, null);
       }
 
-      await request.execute("dbo.proc_InsertEmployee");
+      request.output("ssn", sql.Int);
+
+      const result = await request.execute("dbo.proc_InsertEmployee");
 
       const timestamp = new Date().toISOString();
       console.log(
         `[${timestamp}] \x1b[32mhttp\x1b[0m: ${req.method} ${req.originalUrl} (${res.statusCode} ms) ${res.statusCode}`
       );
 
-      return {
+      return res.status(200).json({
         status: 200,
         message: "Success",
         data: {
+          ssn: result.output.ssn,
           ...req.body,
+          super_ssn: super_ssn,
           imageURL: `${process.env.URL}/employees/images/${req.file.filename}`,
         },
-      };
+      });
     } catch (error) {
       if (req.file) {
         fs.unlinkSync(req.file.path);
       }
-      throw new Error(error.message);
+      return res.status(500).json({
+        status: 500,
+        message: error.message,
+        data: null,
+      });
     }
   },
 
@@ -116,16 +128,22 @@ const Employee = {
         `[${timestamp}] \x1b[32mhttp\x1b[0m: ${req.method} ${req.originalUrl} (${res.statusCode} ms) ${res.statusCode}`
       );
 
-      return {
+      return res.status(200).json({
+        status: 200,
+        message: "Success",
         data,
         total: total,
         page: page,
         perPage: perPage,
         perCurrentPage: data.length,
         totalPage: Math.ceil(total / perPage),
-      };
+      });
     } catch (error) {
-      throw new Error(error.message);
+      return res.status(500).json({
+        status: 500,
+        message: error.message,
+        data: null,
+      });
     }
   },
 
@@ -137,9 +155,13 @@ const Employee = {
         `../../upload/employee/${imageName}`
       );
 
-      res.sendFile(imagePath);
+      return res.sendFile(imagePath);
     } catch (error) {
-      throw new Error(error.message);
+      return res.status(500).json({
+        status: 500,
+        message: error.message,
+        data: null,
+      });
     }
   },
 
@@ -170,11 +192,11 @@ const Employee = {
       ]);
 
       if (resultEmployee.recordset.length === 0) {
-        return {
+        return res.status(404).json({
           status: 404,
           message: "Employee not found",
           data: null,
-        };
+        });
       }
 
       const employee = {
@@ -201,13 +223,17 @@ const Employee = {
         `[${timestamp}] \x1b[32mhttp\x1b[0m: ${req.method} ${req.originalUrl} (${res.statusCode} ms) ${res.statusCode}`
       );
 
-      return {
+      res.status(200).json({
         status: 200,
         message: "Success",
         data: employee,
-      };
+      });
     } catch (error) {
-      throw new Error(error.message);
+      return res.status(500).json({
+        status: 500,
+        message: error.message,
+        data: null,
+      });
     }
   },
 
@@ -222,6 +248,15 @@ const Employee = {
       const oldImageResult = await request.query(
         `SELECT image_url FROM employee WHERE ssn = ${id}`
       );
+
+      if (oldImageResult.recordset.length === 0) {
+        return res.status(404).json({
+          status: 404,
+          message: "Employee not found",
+          data: null,
+        });
+      }
+
       const oldImageUrl = oldImageResult.recordset[0].image_url;
 
       if (req.file && oldImageUrl) {
@@ -244,13 +279,27 @@ const Employee = {
         );
       }
 
-      request
-        .input("ssn", sql.Int, id)
-        .input("cccd", sql.NVarChar, cccd)
-        .input("address", sql.NVarChar, address)
-        .input("job_type", sql.NVarChar, job_type)
-        .input("date_of_birth", sql.Date, date_of_birth)
-        .input("super_ssn", sql.Int, super_ssn);
+      request.input("ssn", sql.Int, id);
+
+      if (cccd && cccd !== "") {
+        request.input("cccd", sql.NVarChar, cccd);
+      }
+
+      if (address && address !== "") {
+        request.input("address", sql.NVarChar, address);
+      }
+
+      if (job_type && job_type !== "") {
+        request.input("job_type", sql.NVarChar, job_type);
+      }
+
+      if (date_of_birth && date_of_birth !== "") {
+        request.input("date_of_birth", sql.Date, date_of_birth);
+      }
+
+      if (super_ssn && super_ssn !== "") {
+        request.input("super_ssn", sql.Int, super_ssn);
+      }
 
       await request.execute("dbo.proc_UpdateEmployee");
 
@@ -259,19 +308,28 @@ const Employee = {
         `[${timestamp}] \x1b[32mhttp\x1b[0m: ${req.method} ${req.originalUrl} (${res.statusCode} ms) ${res.statusCode}`
       );
 
-      return {
+      return res.status(200).json({
         status: 200,
         message: "Success",
         data: {
-          ...req.body,
+          ssn: Number(id),
+          cccd: cccd === "" ? null : cccd,
+          address: address === "" ? null : address,
+          job_type: job_type === "" ? null : job_type,
+          date_of_birth: date_of_birth === "" ? null : date_of_birth,
+          super_ssn: super_ssn === "" ? null : super_ssn,
           image_url: req.file
             ? `${process.env.URL}/employees/images/${req.file.filename}`
             : oldImageUrl,
         },
-      };
+      });
     } catch (error) {
       if (req.file) fs.unlinkSync(req.file.path);
-      throw new Error(error.message);
+      return res.status(500).json({
+        status: 500,
+        message: error.message,
+        data: null,
+      });
     }
   },
 
@@ -317,13 +375,17 @@ const Employee = {
         `[${timestamp}] \x1b[32mhttp\x1b[0m: ${req.method} ${req.originalUrl} (${res.statusCode} ms) ${res.statusCode}`
       );
 
-      return {
+      return res.status(200).json({
         status: 200,
         message: "Success",
         data: null,
-      };
+      });
     } catch (error) {
-      throw new Error(error.message);
+      return res.status(500).json({
+        status: 500,
+        message: error.message,
+        data: null,
+      });
     }
   },
 };
