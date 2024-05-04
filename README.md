@@ -56,7 +56,7 @@ Once the application is running, you can access it by opening your web browser a
 
 ## API Swagger
 
-You can access the API Swagger documentation by navigating to `http://localhost:<your-local-port>/api/v1/employees/api-docs`.
+You can access the API Swagger documentation by navigating to `http://localhost:<your-local-port>/api/v1/api-docs`.
 
 ## Contributing
 
