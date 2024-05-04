@@ -24,23 +24,31 @@ exports.getImage = async (req, res) => {
   }
 };
 
-
-exports.findOne =  async(req, res) => {
+exports.findById = async (req, res) => {
   try {
-    const data = await Employee.findOne(req, res);
+    const data = await Employee.findById(req, res);
     res.status(200).json(data);
-  }
-  catch (error) {
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-exports.update = (req, res) => {
-  res.json({ message: "Update an employee with id." });
+exports.update = async (req, res) => {
+  try {
+    const data = await Employee.update(req, res);
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-exports.delete = (req, res) => {
-  res.json({ message: "Delete an employee with id." });
+exports.delete = async (req, res) => {
+  try {
+    const data = await Employee.delete(req, res);
+    res.status(200).json(data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 exports.findByFilter = async (req, res) => {

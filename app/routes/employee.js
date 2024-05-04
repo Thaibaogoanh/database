@@ -14,13 +14,13 @@ module.exports = (app) => {
   router.get("/images/:imageName", employees.getImage);
 
   // Get an employee with id
-  router.get("/:id", employees.findOne);
+  router.get("/:id", employees.findById);
 
   // Update an employee with id
-  router.put("/:id", employees.update);
+  router.put("/:id", uploadEmployee.single("image"), employees.update);
 
-  // Delete an employee with id
-  router.delete("/:id", employees.delete);
+  // Delete employees with ids
+  router.delete("/", employees.delete);
 
   app.use("/api/v1/employees", router);
 };

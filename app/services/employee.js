@@ -143,7 +143,7 @@ const Employee = {
     }
   },
 
-  findOne: async (req, res) => {
+  findById: async (req, res) => {
     try {
       const { id } = req.params;
       const pool = await connectDB();
@@ -211,12 +211,120 @@ const Employee = {
     }
   },
 
-  update: (req, res) => {
-    res.json({ message: "Update an employee with id." });
+  update: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { cccd, address, job_type, date_of_birth, super_ssn } = req.body;
+
+      const pool = await connectDB();
+      const request = pool.request();
+
+      const oldImageResult = await request.query(
+        `SELECT image_url FROM employee WHERE ssn = ${id}`
+      );
+      const oldImageUrl = oldImageResult.recordset[0].image_url;
+
+      if (req.file && oldImageUrl) {
+        const oldImageFileName = oldImageUrl.split("/").pop();
+        const oldImagePath = path.join(
+          __dirname,
+          "../../upload/employee",
+          oldImageFileName
+        );
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+
+      if (req.file) {
+        request.input(
+          "image_url",
+          sql.NVarChar,
+          `${process.env.URL}/employees/images/${req.file.filename}`
+        );
+      }
+
+      request
+        .input("ssn", sql.Int, id)
+        .input("cccd", sql.NVarChar, cccd)
+        .input("address", sql.NVarChar, address)
+        .input("job_type", sql.NVarChar, job_type)
+        .input("date_of_birth", sql.Date, date_of_birth)
+        .input("super_ssn", sql.Int, super_ssn);
+
+      await request.execute("dbo.proc_UpdateEmployee");
+
+      const timestamp = new Date().toISOString();
+      console.log(
+        `[${timestamp}] \x1b[32mhttp\x1b[0m: ${req.method} ${req.originalUrl} (${res.statusCode} ms) ${res.statusCode}`
+      );
+
+      return {
+        status: 200,
+        message: "Success",
+        data: {
+          ...req.body,
+          image_url: req.file
+            ? `${process.env.URL}/employees/images/${req.file.filename}`
+            : oldImageUrl,
+        },
+      };
+    } catch (error) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      throw new Error(error.message);
+    }
   },
 
-  delete: (req, res) => {
-    res.json({ message: "Delete an employee with id." });
+  delete: async (req, res) => {
+    try {
+      const { ids } = req.body;
+      const pool = await connectDB();
+      const request = pool.request();
+
+      const imageUrlsResult = await request.query(`
+      SELECT image_url FROM employee WHERE ssn IN (${ids.join(",")})
+    `);
+
+      const imageUrls = imageUrlsResult.recordset
+        .map((record) => record.image_url)
+        .filter((imageUrl) => imageUrl !== null);
+
+      const table = new sql.Table();
+      table.columns.add("SSN", sql.Int);
+
+      ids.forEach((id) => {
+        table.rows.add(id);
+      });
+
+      request.input("SSNs", table);
+
+      await request.execute("dbo.proc_DeleteEmployees");
+
+      imageUrls.forEach((imageUrl) => {
+        const imageName = imageUrl.split("/").pop();
+        const imagePath = path.join(
+          __dirname,
+          "../../upload/employee",
+          imageName
+        );
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      });
+
+      const timestamp = new Date().toISOString();
+      console.log(
+        `[${timestamp}] \x1b[32mhttp\x1b[0m: ${req.method} ${req.originalUrl} (${res.statusCode} ms) ${res.statusCode}`
+      );
+
+      return {
+        status: 200,
+        message: "Success",
+        data: null,
+      };
+    } catch (error) {
+      throw new Error(error.message);
+    }
   },
 };
 

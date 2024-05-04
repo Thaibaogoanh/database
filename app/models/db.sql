@@ -584,11 +584,12 @@ GO
 
 CREATE PROCEDURE dbo.proc_UpdateEmployee
     @ssn INT,
-    @cccd NVARCHAR(50),
-    @address NVARCHAR(500),
-    @job_type NVARCHAR(100),
-    @date_of_birth DATE,
-    @super_ssn INT
+    @cccd NVARCHAR(50) = NULL,
+    @address NVARCHAR(500) = NULL,
+    @job_type NVARCHAR(100) = NULL,
+    @date_of_birth DATE = NULL,
+    @image_url NVARCHAR(200) = NULL,
+    @super_ssn INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -609,10 +610,12 @@ BEGIN
 
     -- Update employee
     UPDATE e
-    SET e.address = @address,
-        e.cccd = @cccd,
-        e.job_type = @job_type,
-        e.super_ssn = @super_ssn,
+    SET e.address = ISNULL(@address, e.address),
+        e.cccd = ISNULL(@cccd, e.cccd),
+        e.job_type = ISNULL(@job_type, e.job_type),
+        e.super_ssn = ISNULL(@super_ssn, e.super_ssn),
+        e.date_of_birth = CASE WHEN @date_of_birth IS NOT NULL THEN @date_of_birth ELSE e.date_of_birth END,
+        e.image_url = ISNULL(@image_url, e.image_url),
         e.updated_at = GETDATE()
     FROM employee e
     WHERE e.ssn = @ssn;
@@ -637,26 +640,58 @@ GO
 -- GO
 
 -- 3. Create procedure to delete employee
-IF OBJECT_ID('dbo.proc_DeleteEmployee', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.proc_DeleteEmployee;
+IF OBJECT_ID('dbo.proc_DeleteEmployees', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.proc_DeleteEmployees;
 GO
 
-CREATE PROCEDURE dbo.proc_DeleteEmployee
-    @ssn INT
+-- CREATE PROCEDURE dbo.proc_DeleteEmployee
+--     @ssn INT
+-- AS
+-- BEGIN
+--     SET NOCOUNT ON;
+
+--     -- Check if the employee exists
+--     IF NOT EXISTS (SELECT * FROM employee WHERE ssn = @ssn)
+--     BEGIN
+--         RAISERROR('Employee does not exist', 16, 1);
+--         RETURN;
+--     END;
+
+--     -- Delete employee
+--     DELETE FROM employee
+--     WHERE ssn = @ssn;
+-- END;
+-- GO
+
+CREATE TYPE EmployeeSSNTableType AS TABLE  
+( SSN INT
+);
+GO
+
+CREATE PROCEDURE dbo.proc_DeleteEmployees
+    @SSNs EmployeeSSNTableType READONLY
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Check if the employee exists
-    IF NOT EXISTS (SELECT * FROM employee WHERE ssn = @ssn)
-    BEGIN
-        RAISERROR('Employee does not exist', 16, 1);
-        RETURN;
-    END;
+    -- Check if the employees exist
+    DECLARE @MissingEmployees NVARCHAR(MAX);
 
-    -- Delete employee
+    SELECT @MissingEmployees = COALESCE(@MissingEmployees + ', ', '') + CONVERT(NVARCHAR(MAX), SSN)
+    FROM @SSNs
+    WHERE SSN NOT IN (SELECT SSN FROM employee);
+
+    IF @MissingEmployees IS NOT NULL
+    BEGIN
+        DECLARE @ErrorMessage NVARCHAR(MAX);
+        SET @ErrorMessage = 'Employees with ssns ' + @MissingEmployees + ' do not exist.';
+        RAISERROR(@ErrorMessage, 16, 1);
+        RETURN;
+    END
+
+    -- Delete employees
     DELETE FROM employee
-    WHERE ssn = @ssn;
+    WHERE ssn IN (SELECT SSN FROM @SSNs);
 END;
 GO
 
