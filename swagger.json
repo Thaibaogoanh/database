@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Employee Management API",
-    "description": "CRUD operations for managing employees",
+    "title": "Coffee management API",
+    "description": "CRUD operations for coffee shop management",
     "version": "1.0.0"
   },
   "servers": [
@@ -10,10 +10,17 @@
       "url": "/api/v1"
     }
   ],
+  "tags": [
+    {
+      "name": "Employee",
+      "description": "CRUD operations on employees"
+    }
+  ],
   "paths": {
     "/employees": {
       "post": {
         "summary": "Create a new employee",
+        "tags": ["Employee"],
         "requestBody": {
           "required": true,
           "content": {
@@ -165,6 +172,7 @@
       },
       "get": {
         "summary": "Get employees by filters",
+        "tags": ["Employee"],
         "parameters": [
           {
             "name": "jobType",
@@ -313,6 +321,7 @@
       },
       "delete": {
         "summary": "Delete employee by ID",
+        "tags": ["Employee"],
         "requestBody": {
           "required": true,
           "content": {
@@ -359,6 +368,7 @@
     "/employees/{id}": {
       "get": {
         "summary": "Get employee by ID",
+        "tags": ["Employee"],
         "parameters": [
           {
             "name": "id",
@@ -406,6 +416,7 @@
       },
       "put": {
         "summary": "Update employee by ID",
+        "tags": ["Employee"],
         "parameters": [
           {
             "name": "id",
