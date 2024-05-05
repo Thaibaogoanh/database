@@ -23,6 +23,9 @@ function Slicebar() {
                 <li>
                     <NavLink to="/customers" className="nav-link link-dark" activeClassName="activeLink">Customers</NavLink>
                 </li>
+                <li>
+                    <NavLink to="/stockroom" className="nav-link link-dark" activeClassName="activeLink">Stockroom</NavLink>
+                </li>
             </ul>
             <hr />
             <div className="dropdown">

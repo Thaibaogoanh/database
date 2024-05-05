@@ -4,6 +4,7 @@ import Products from '~/pages/Product';
 import Orders from '~/pages/Order';
 import Staffs from '~/pages/Staffs';
 import Customers from '~/pages/Customer';
+import Stockroom from '~/pages/Stockroom';
 
 const publicRoutes = [
     {
@@ -31,6 +32,10 @@ const publicRoutes = [
         path: '/customers',
         component: Customers,
     },
+    {
+        path: '/stockroom',
+        component: Stockroom,
+    }
 ];
 
 const privateRoutes = [];
