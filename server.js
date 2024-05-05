@@ -27,6 +27,7 @@ app.use("/api/v1/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 require("./app/models/connection.js");
 require("./app/routes/employee.js")(app);
+require("./app/routes/product.js")(app);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
