@@ -1,6 +1,7 @@
 const { connectDB, sql } = require("../models/config.js");
 const fs = require("fs");
 const path = require("path");
+const _ = require("lodash");
 
 const Employee = {
   create: async (req, res) => {
@@ -65,7 +66,7 @@ const Employee = {
         data: {
           ssn: result.output.ssn,
           ...req.body,
-          super_ssn: super_ssn,
+          super_ssn: super_ssn === "" ? null : super_ssn,
           imageURL: `${process.env.URL}/employees/images/${req.file.filename}`,
         },
       });
@@ -118,7 +119,7 @@ const Employee = {
         if (!existEmployee) {
           existEmployee = { ssn, ...rest, phone_numbers: [] };
           resultMap.set(ssn, existEmployee);
-          data.push(existEmployee);
+          data.push(_.omit(existEmployee, ["created_at", "updated_at"]));
         }
         existEmployee.phone_numbers.push(phone_number);
       });
@@ -226,7 +227,7 @@ const Employee = {
       res.status(200).json({
         status: 200,
         message: "Success",
-        data: employee,
+        data: _.omit(employee,['created_at', 'updated_at']),
       });
     } catch (error) {
       return res.status(500).json({
@@ -317,7 +318,7 @@ const Employee = {
           address: address === "" ? null : address,
           job_type: job_type === "" ? null : job_type,
           date_of_birth: date_of_birth === "" ? null : date_of_birth,
-          super_ssn: super_ssn === "" ? null : super_ssn,
+          super_ssn: super_ssn === "" ? null : Number(super_ssn),
           image_url: req.file
             ? `${process.env.URL}/employees/images/${req.file.filename}`
             : oldImageUrl,
