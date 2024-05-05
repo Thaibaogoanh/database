@@ -36,8 +36,7 @@
                   "date_of_birth",
                   "last_name",
                   "middle_name",
-                  "first_name",
-                  "image"
+                  "first_name"
                 ],
                 "properties": {
                   "cccd": {
