@@ -1,13 +1,21 @@
-.SlicebarArea{
+.SlicebarArea {
     width: 20vw;
     height: 94vh;
-    outline: solid 2px rgb(101, 197, 197);
+    outline: solid 2px #153448;
     margin-top: 3vh;
     margin-bottom: 3vh;
     border-radius: 5px;
-}
-.activeLink {
-    color: #fff; // Màu trắng cho nền tối
-    background-color: #007bff; // Màu nền xanh dương Bootstrap
-}
 
+    li {
+        cursor: pointer;
+    }
+
+    li:hover {
+        transition: all 0.25s ease-in-out;
+        background-color: rgb(30, 97, 97, 0.2);
+    }
+
+    .active {
+        background-color: #DAC0A3;
+    }
+}

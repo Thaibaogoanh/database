@@ -1,30 +1,31 @@
 import clsx from 'clsx';
 import style from './Slicebar.module.scss';
 import { NavLink } from 'react-router-dom';
+import CoffeeIcon from '@mui/icons-material/Coffee';
 
 function Slicebar() {
     return (
         <div className={clsx("d-flex flex-column flex-shrink-0 p-3 bg-light", style.SlicebarArea)}>
-            <span className="fs-4">Sidebar</span>
+            <h3><CoffeeIcon/> Quán Ế</h3>
             <hr />
             <ul className="nav nav-pills flex-column mb-auto">
                 <li>
-                    <NavLink to="/dashboard" className="nav-link link-dark" activeClassName="activeLink">Dashboard</NavLink>
+                    <NavLink to="/dashboard" className={({ isActive }) => isActive ? clsx("nav-link link-dark", style.active) : "nav-link link-dark"}>Dashboard</NavLink>
                 </li>
                 <li>
-                    <NavLink to="/products" className="nav-link link-dark" activeClassName="activeLink">Products</NavLink>
+                    <NavLink to="/products" className={({ isActive }) => isActive ? clsx("nav-link link-dark", style.active) : "nav-link link-dark"}>Products</NavLink>
                 </li>
                 <li>
-                    <NavLink to="/orders" className="nav-link link-dark" activeClassName="activeLink">Orders</NavLink>
+                    <NavLink to="/orders" className={({ isActive }) => isActive ? clsx("nav-link link-dark", style.active) : "nav-link link-dark"}>Orders</NavLink>
                 </li>
                 <li>
-                    <NavLink to="/staffs" className="nav-link link-dark" activeClassName="activeLink">Staffs</NavLink>
+                    <NavLink to="/staffs" className={({ isActive }) => isActive ? clsx("nav-link link-dark", style.active) : "nav-link link-dark"}>Staffs</NavLink>
                 </li>
                 <li>
-                    <NavLink to="/customers" className="nav-link link-dark" activeClassName="activeLink">Customers</NavLink>
+                    <NavLink to="/customers" className={({ isActive }) => isActive ? clsx("nav-link link-dark", style.active) : "nav-link link-dark"}>Customers</NavLink>
                 </li>
                 <li>
-                    <NavLink to="/stockroom" className="nav-link link-dark" activeClassName="activeLink">Stockroom</NavLink>
+                    <NavLink to="/stockroom" className={({ isActive }) => isActive ? clsx("nav-link link-dark", style.active) : "nav-link link-dark"}>Stockroom</NavLink>
                 </li>
             </ul>
             <hr />

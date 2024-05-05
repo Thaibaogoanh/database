@@ -1,7 +1,6 @@
 import * as React from 'react';
 import PropTypes from 'prop-types';
 import { alpha } from '@mui/material/styles';
-import Box from '@mui/material/Box';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -24,13 +23,12 @@ import Button from '@mui/material/Button';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import InputBase from '@mui/material/InputBase';
-import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { TextField } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers-pro';
+import { AdapterDayjs } from '@mui/x-date-pickers-pro/AdapterDayjs';
+import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
+import { TextField, Box } from '@mui/material';
 
 function Products() {
-const [date1, setDate1] = React.useState(new Date());
-const [date2, setDate2] = React.useState(new Date());
 
 function createData(id, img_url, name, size, price, sold, state) {
   return {
@@ -89,121 +87,102 @@ function EnhancedTableHead(props) {
 
   return (
     <TableHead>
-        <TableRow>
-            <TableCell padding="checkbox" rowSpan={2}>
-                <Checkbox
-                    color="primary"
-                    indeterminate={numSelected > 0 && numSelected < rowCount}
-                    checked={rowCount > 0 && numSelected === rowCount}
-                    onChange={onSelectAllClick}
-                    inputProps={{
-                    'aria-label': 'select all desserts',
-                    }}
-                />
-            </TableCell>
-            <TableCell
-                key='name'
-                align='left'
-                padding='none'
-                sortDirection={orderBy === 'name' ? order : false}
-                rowSpan={2}
-                colSpan={2}
-            >
-                <TableSortLabel
-                    active={orderBy === 'name'}
-                    direction={orderBy === 'name' ? order : 'asc'}
-                    onClick={createSortHandler('name')}
-                >
-                    Name
-                    {orderBy === 'name' ? (
-                        <Box component="span" sx={visuallyHidden}>
-                            {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
-                        </Box>
-                    ) : null}
-                </TableSortLabel>
-            </TableCell>
-            <TableCell
-                align='center'
-                padding='normal'
-                sortDirection={orderBy === 'size' ? order : false}
-                rowSpan={2}
-            >
-                Size
-            </TableCell>
-            <TableCell
-                key='price'
-                align='right'
-                padding='normal'
-                sortDirection={orderBy === 'price' ? order : false}
-                rowSpan={2}
-            >
-                <TableSortLabel
-                    active={orderBy === 'price'}
-                    direction={orderBy === 'price' ? order : 'asc'}
-                    onClick={createSortHandler('price')}
-                >
-                    Price
-                    {orderBy === 'price' ? (
-                        <Box component="span" sx={visuallyHidden}>
-                            {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
-                        </Box>
-                    ) : null}
-                </TableSortLabel>
-            </TableCell>
-            <TableCell
-                key='sold'
-                align='right'
-                padding='normal'
-                sortDirection={orderBy === 'sold' ? order : false}
-                colSpan={2}
-            >
-                <TableSortLabel
-                    active={orderBy === 'sold'}
-                    direction={orderBy === 'sold' ? order : 'asc'}
-                    onClick={createSortHandler('sold')}
-                >
-                    Quantity Sold
-                    {orderBy === 'sold' ? (
-                        <Box component="span" sx={visuallyHidden}>
-                            {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
-                        </Box>
-                    ) : null}
-                </TableSortLabel>
-            </TableCell>
-            <TableCell
-                align='center'
-                padding='normal'
-                rowSpan={2}
-            >
-                State
-            </TableCell>
-            <TableCell
-                align='right'
-                padding='normal'
-                rowSpan={2}
-                colSpan={3}
-            >
-                Options
-            </TableCell>
-        </TableRow>
-        <TableRow>
-        <TableCell align='center' padding='normal'>
-            <DatePicker
-              label="Select Date 1"
-              value={date1}
-              onChange={setDate1}
-              renderInput={(params) => <TextField {...params} />}
+      <TableRow>
+        <TableCell padding="checkbox">
+          <Checkbox
+            color="primary"
+            indeterminate={numSelected > 0 && numSelected < rowCount}
+            checked={rowCount > 0 && numSelected === rowCount}
+            onChange={onSelectAllClick}
+            inputProps={{
+            'aria-label': 'select all desserts',
+            }}
+          />
+        </TableCell>
+        <TableCell
+          key='name'
+          align='left'
+          padding='none'
+          sortDirection={orderBy === 'name' ? order : false}
+          colSpan={2}
+        >
+          <TableSortLabel
+            active={orderBy === 'name'}
+            direction={orderBy === 'name' ? order : 'asc'}
+            onClick={createSortHandler('name')}
+          >
+            Name
+            {orderBy === 'name' ? (
+              <Box component="span" sx={visuallyHidden}>
+                {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
+              </Box>
+            ) : null}
+          </TableSortLabel>
+        </TableCell>
+        <TableCell
+          align='center'
+          padding='normal'
+          sortDirection={orderBy === 'size' ? order : false}
+        >
+          Size
+        </TableCell>
+        <TableCell
+          key='price'
+          align='right'
+          padding='normal'
+          sortDirection={orderBy === 'price' ? order : false}
+        >
+          <TableSortLabel
+            active={orderBy === 'price'}
+            direction={orderBy === 'price' ? order : 'asc'}
+            onClick={createSortHandler('price')}
+          >
+            Price
+            {orderBy === 'price' ? (
+              <Box component="span" sx={visuallyHidden}>
+                {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
+              </Box>
+            ) : null}
+          </TableSortLabel>
+        </TableCell>
+        <TableCell 
+          align='center' 
+          padding='normal'
+          key='sold'
+          sortDirection={orderBy === 'sold' ? order : false}
+        >
+          <TableSortLabel
+            active={orderBy === 'sold'}
+            direction={orderBy === 'sold' ? order : 'asc'}
+            onClick={createSortHandler('sold')}
+          >
+            Quantity Sold
+            {orderBy === 'sold' ? (
+              <Box component="span" sx={visuallyHidden}>
+                {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
+              </Box>
+            ) : null}
+          </TableSortLabel>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DateRangePicker
+              calendars={1} // Only show one calendar
             />
-          </TableCell>
-          <TableCell align='center' padding='normal'>
-            <DatePicker
-              label="Select Date 2"
-              value={date2}
-              onChange={setDate2}
-              renderInput={(params) => <TextField {...params} />}
-            />
-          </TableCell>
-        </TableRow>
+          </LocalizationProvider>
+        </TableCell>
+        <TableCell
+          align='center'
+          padding='normal'
+        >
+          State
+        </TableCell>
+        <TableCell
+          align='right'
+          padding='normal'
+          colSpan={3}
+        >
+          Options
+        </TableCell>
+      </TableRow>
     </TableHead>
   );
 }
@@ -245,7 +224,13 @@ function EnhancedTableToolbar(props) {
             <Button 
                 variant="contained"
                 endIcon={<AddCircleOutlineIcon />}
-                sx={{ textTransform: 'none' }}
+                sx={{
+                  textTransform: 'none' ,
+                  backgroundColor: '#4B6587', // Use backgroundColor inside sx
+                  ':hover': {
+                      backgroundColor: '#102C57' // Darken on hover for example
+                  }
+                }}
             >
                 Thêm sản phẩm   
             </Button>

@@ -1,9 +1,9 @@
 .Layout {
-    width: 95vw;
-    margin: auto;
+    background-color: #FEFAF6;
     display: flex;
 
     .slicebar {
         padding-right: 20px; // Add padding on the right side of the Slicebar
+        padding-left: 2vw;
     }
 }
