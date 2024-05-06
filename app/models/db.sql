@@ -117,9 +117,9 @@ BEGIN
     );
 END;
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'supplier_invoice_item')
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'supplier_item')
 BEGIN
-    CREATE TABLE [supplier_invoice_item] (
+    CREATE TABLE [supplier_item] (
       [product_name] NVARCHAR(50) NOT NULL,
       [unit] NVARCHAR(50) NOT NULL,
       [price] DECIMAL(10,2) NOT NULL,
@@ -137,7 +137,7 @@ BEGIN
       PRIMARY KEY ([supplier_name],[supplier_invoice_id],[product_name]),
       CONSTRAINT [fk_supply_supplier] FOREIGN KEY ([supplier_name]) REFERENCES [supplier] ([supplier_name]) ON DELETE CASCADE,
       CONSTRAINT [fk_supply_supplier_invoice] FOREIGN KEY ([supplier_invoice_id]) REFERENCES [supplier_invoice] ([id]) ON DELETE CASCADE,
-      CONSTRAINT [fk_supply_supplier_invoice_item] FOREIGN KEY ([product_name]) REFERENCES [supplier_invoice_item] ([product_name]) ON DELETE CASCADE
+      CONSTRAINT [fk_supply_supplier_item] FOREIGN KEY ([product_name]) REFERENCES [supplier_item] ([product_name]) ON DELETE CASCADE
     );
 END;
 
@@ -203,12 +203,24 @@ BEGIN
     CREATE TABLE [customer] (
       [id] INT NOT NULL IDENTITY(1,1),
       [name] NVARCHAR(50) NOT NULL,
-      [phone_number] VARCHAR(50) NOT NULL,
-      [date_of_birth] DATE NOT NULL,
+      [phone_number] VARCHAR(50) NULL,
+      [date_of_birth] DATE NULL,
       PRIMARY KEY ([id])
     );
 END;
 
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'promotion')
+BEGIN
+    CREATE TABLE [promotion] (
+      [id] INT NOT NULL IDENTITY(1,1),
+      [promotion_name] NVARCHAR(50) NOT NULL,
+      [start_date] DATE NOT NULL,
+      [end_date] DATE NOT NULL,
+      [discount_type] NVARCHAR(50) NOT NULL CHECK (discount_type IN ('PERCENT', 'AMOUNT')),
+      [discount_value] DECIMAL(10,2) NOT NULL,
+      PRIMARY KEY ([id])
+    );
+END;
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'order')
 BEGIN
@@ -218,9 +230,11 @@ BEGIN
       [note] NVARCHAR(500) DEFAULT NULL,
       [employee_ssn] INT NOT NULL,
       [customer_id] INT DEFAULT NULL,
+      [promotion_id] INT DEFAULT NULL,
       PRIMARY KEY ([id]),
       CONSTRAINT [fk_order_employee] FOREIGN KEY ([employee_ssn]) REFERENCES [employee] ([ssn]) ON DELETE CASCADE,
-      CONSTRAINT [fk_order_customer] FOREIGN KEY ([customer_id]) REFERENCES [customer] ([id]) ON DELETE CASCADE
+      CONSTRAINT [fk_order_customer] FOREIGN KEY ([customer_id]) REFERENCES [customer] ([id]) ON DELETE CASCADE,
+      CONSTRAINT [fk_order_promotion] FOREIGN KEY ([promotion_id]) REFERENCES [promotion] ([id]) ON DELETE SET NULL
     );
 END;
 
@@ -242,40 +256,28 @@ BEGIN
       [id] INT NOT NULL IDENTITY(1,1),
       [date] DATE NOT NULL,
       [time] TIME NOT NULL,
-      [payment_method] NVARCHAR(50) NOT NULL CHECK (payment_method IN ('CASH', 'ONLINE', 'CARD')),
+      [payment_method] NVARCHAR(50) NOT NULL CHECK (payment_method IN (N'Tiền mặt', N'Chuyển khoản')),
       [order_id] INT NOT NULL,
-      [total_price] DECIMAL(10,2) NOT NULL,
+      [total_price] DECIMAL(10,2) NULL,
       PRIMARY KEY ([id]),
       CONSTRAINT [fk_sale_invoice_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id]) ON DELETE CASCADE
     );
 END;
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'size_sale_invoice')
-BEGIN
-    CREATE TABLE [size_sale_invoice] (
-      [size] NVARCHAR(50) NOT NULL,
-      [quantity] INT NOT NULL,
-      [beverage_name] NVARCHAR(50) NOT NULL,
-      [subTotal] DECIMAL(10,2) NULL,
-      [sale_invoice_id] INT NOT NULL,
-      PRIMARY KEY ([size],[beverage_name],[sale_invoice_id]),
-      CONSTRAINT [fk_size_sale_invoice_size] FOREIGN KEY ([size],[beverage_name]) REFERENCES [size] ([size],[beverage_name]) ON DELETE CASCADE,
-      CONSTRAINT [fk_size_sale_invoice_sale_invoice] FOREIGN KEY ([sale_invoice_id]) REFERENCES [sale_invoice] ([id]) ON DELETE CASCADE
-    );
-END;
+-- IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'size_sale_invoice')
+-- BEGIN
+--     CREATE TABLE [size_sale_invoice] (
+--       [size] NVARCHAR(50) NOT NULL,
+--       [quantity] INT NOT NULL,
+--       [beverage_name] NVARCHAR(50) NOT NULL,
+--       [subTotal] DECIMAL(10,2) NULL,
+--       [sale_invoice_id] INT NOT NULL,
+--       PRIMARY KEY ([size],[beverage_name],[sale_invoice_id]),
+--       CONSTRAINT [fk_size_sale_invoice_size] FOREIGN KEY ([size],[beverage_name]) REFERENCES [size] ([size],[beverage_name]) ON DELETE CASCADE,
+--       CONSTRAINT [fk_size_sale_invoice_sale_invoice] FOREIGN KEY ([sale_invoice_id]) REFERENCES [sale_invoice] ([id]) ON DELETE CASCADE
+--     );
+-- END;
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'promotion')
-BEGIN
-    CREATE TABLE [promotion] (
-      [id] INT NOT NULL IDENTITY(1,1),
-      [promotion_name] NVARCHAR(50) NOT NULL,
-      [start_date] DATE NOT NULL,
-      [end_date] DATE NOT NULL,
-      [discount_type] NVARCHAR(50) NOT NULL CHECK (discount_type IN ('PERCENT', 'AMOUNT')),
-      [discount_value] DECIMAL(10,2) NOT NULL,
-      PRIMARY KEY ([id])
-    );
-END;
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'size_promotion')
 BEGIN
@@ -313,16 +315,16 @@ BEGIN
 END;
 
 
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'promotion_order')
-BEGIN
-    CREATE TABLE [promotion_order] (
-      [order_id] INT NOT NULL,
-      [promotion_id] INT NOT NULL,
-      PRIMARY KEY ([order_id]),
-      CONSTRAINT [fk_promotion_order_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id]) ON DELETE CASCADE,
-      CONSTRAINT [fk_promotion_order_promotion] FOREIGN KEY ([promotion_id]) REFERENCES [promotion] ([id]) ON DELETE CASCADE
-    );
-END;
+-- IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'promotion_order')
+-- BEGIN
+--     CREATE TABLE [promotion_order] (
+--       [order_id] INT NOT NULL,
+--       [promotion_id] INT NOT NULL,
+--       PRIMARY KEY ([order_id]),
+--       CONSTRAINT [fk_promotion_order_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id]) ON DELETE CASCADE,
+--       CONSTRAINT [fk_promotion_order_promotion] FOREIGN KEY ([promotion_id]) REFERENCES [promotion] ([id]) ON DELETE CASCADE
+--     );
+-- END;
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'delivery_service')
 BEGIN
@@ -353,6 +355,7 @@ BEGIN
       [beverage_name] NVARCHAR(50) NOT NULL,
       [order_id] INT NOT NULL,
       [quantity] INT NOT NULL,
+      [total_price] DECIMAL(10,2) NULL,
       PRIMARY KEY ([size],[beverage_name],[order_id]),
       CONSTRAINT [fk_size_order_size] FOREIGN KEY ([size],[beverage_name]) REFERENCES [size] ([size],[beverage_name]) ON DELETE CASCADE,
       CONSTRAINT [fk_size_order_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id]) ON DELETE CASCADE
@@ -360,82 +363,13 @@ BEGIN
 END;
 GO
 
+
+
 -- Procedure to insert, update, delete employee
 -- 1. Create procedure to insert employee
 IF OBJECT_ID('dbo.proc_InsertEmployee', 'P') IS NOT NULL
     DROP PROCEDURE dbo.proc_InsertEmployee;
 GO
-
--- CREATE PROCEDURE dbo.proc_InsertEmployee
---     @cccd NVARCHAR(50),
---     @address NVARCHAR(500),
---     @job_type NVARCHAR(100),
---     @date_of_work DATETIME2,
---     @gender NVARCHAR(10),
---     @date_of_birth DATE,
---     @last_name NVARCHAR(50),
---     @middle_name NVARCHAR(50),
---     @first_name NVARCHAR(50),
---     @list_phone_number VARCHAR(MAX),
---     @super_ssn INT
--- AS
--- BEGIN
---     SET NOCOUNT ON;
-
---     -- Check if employee is older than 18 years old
---     IF DATEDIFF(YEAR, @date_of_birth, GETDATE()) < 18
---     BEGIN
---         RAISERROR('Employee must be older than 18 years old', 16, 1);
---         RETURN;
---     END;
-
---     -- Check if phone numbers have valid format
---     DECLARE @InvalidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
---     DECLARE @ValidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
-
---     INSERT INTO @InvalidPhoneNumbers (PhoneNumber)
---     SELECT value
---     FROM STRING_SPLIT(@list_phone_number, ',')
---     WHERE value NOT LIKE '0[35789][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
-
---     -- Raise error for each invalid phone number
---     DECLARE @ErrorMessage NVARCHAR(MAX);
---     DECLARE @InvalidPhoneNumber NVARCHAR(20);
-
---     DECLARE InvalidPhoneNumbersCursor CURSOR FOR
---     SELECT PhoneNumber FROM @InvalidPhoneNumbers;
-
---     OPEN InvalidPhoneNumbersCursor;
---     FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
-
---     WHILE @@FETCH_STATUS = 0
---     BEGIN
---         SET @ErrorMessage = 'Invalid phone number: ' + @InvalidPhoneNumber;
---         RAISERROR(@ErrorMessage, 16, 1);
---         FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
---     END;
-
---     CLOSE InvalidPhoneNumbersCursor;
---     DEALLOCATE InvalidPhoneNumbersCursor;
-
---     -- Insert employee
---     INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name], [super_ssn])
---     VALUES (@cccd, @address, @job_type, @date_of_work, @gender, @date_of_birth, @last_name, @middle_name, @first_name, @super_ssn);
-
---     -- Insert phone numbers for the employee into employee_phone_number table
---     DECLARE @EmployeeSSN INT;
---     SELECT @EmployeeSSN = SCOPE_IDENTITY();
-
---     DECLARE @PhoneNumberList TABLE (PhoneNumber VARCHAR(20));
-
---     INSERT INTO @PhoneNumberList (PhoneNumber)
---     SELECT value
---     FROM STRING_SPLIT(@list_phone_number, ',');
-
---     INSERT INTO employee_phone_number (ssn, phone_number)
---     SELECT @EmployeeSSN, PhoneNumber
---     FROM @PhoneNumberList;
--- END;
 
 CREATE PROCEDURE dbo.proc_InsertEmployee
     @cccd NVARCHAR(50),
@@ -484,114 +418,10 @@ BEGIN
 END;
 GO
 
-
--- -- Test procedure InsertEmployee
--- DECLARE @cccd NVARCHAR(50) = '123456789';
--- DECLARE @address NVARCHAR(500) = '123 Main Street, City';
--- DECLARE @job_type NVARCHAR(100) = 'Manager';
--- DECLARE @date_of_work DATETIME2 = '2024-05-02';
--- DECLARE @gender NVARCHAR(10) = 'Male';
--- DECLARE @date_of_birth DATE = '1990-01-01';
--- DECLARE @last_name NVARCHAR(50) = 'Doe';
--- DECLARE @middle_name NVARCHAR(50) = 'John';
--- DECLARE @first_name NVARCHAR(50) = 'John';
--- DECLARE @list_phone_number VARCHAR(MAX) = '0987654321,0999999999,0965483957,0946573847';
-
--- EXEC dbo.proc_InsertEmployee 
---     @cccd,
---     @address,
---     @job_type,
---     @date_of_work,
---     @gender,
---     @date_of_birth,
---     @last_name,
---     @middle_name,
---     @first_name,
---     @list_phone_number,
---     NULL;
--- GO
-
 -- 2. Create procedure to update employee
 IF OBJECT_ID('dbo.proc_UpdateEmployee', 'P') IS NOT NULL
     DROP PROCEDURE dbo.proc_UpdateEmployee;
 GO
-
--- CREATE PROCEDURE dbo.proc_UpdateEmployee
---     @ssn INT,
---     @cccd NVARCHAR(50),
---     @address NVARCHAR(500),
---     @job_type NVARCHAR(100),
---     @list_phone_number VARCHAR(MAX),
---     @super_ssn INT
--- AS
--- BEGIN
---     SET NOCOUNT ON;
-
---     -- Check if the employee exists
---     IF NOT EXISTS (SELECT * FROM employee WHERE ssn = @ssn)
---     BEGIN
---         RAISERROR('Employee does not exist', 16, 1);
---         RETURN;
---     END;
-
---     -- Check if phone numbers have valid format
---     DECLARE @InvalidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
---     DECLARE @ValidPhoneNumbers TABLE (PhoneNumber VARCHAR(20));
-
---     INSERT INTO @InvalidPhoneNumbers (PhoneNumber)
---     SELECT value
---     FROM STRING_SPLIT(@list_phone_number, ',')
---     WHERE value NOT LIKE '0[35789][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
-
---     -- Raise error for each invalid phone number
---     DECLARE @ErrorMessage NVARCHAR(MAX);
---     DECLARE @InvalidPhoneNumber NVARCHAR(20);
-
---     DECLARE InvalidPhoneNumbersCursor CURSOR FOR
---     SELECT PhoneNumber FROM @InvalidPhoneNumbers;
-
---     OPEN InvalidPhoneNumbersCursor;
---     FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
-
---     WHILE @@FETCH_STATUS = 0
---     BEGIN
---         SET @ErrorMessage = 'Invalid phone number: ' + @InvalidPhoneNumber;
---         RAISERROR(@ErrorMessage, 16, 1);
---         FETCH NEXT FROM InvalidPhoneNumbersCursor INTO @InvalidPhoneNumber;
---     END;
-
---     CLOSE InvalidPhoneNumbersCursor;
---     DEALLOCATE InvalidPhoneNumbersCursor;
-
---     -- Update employee
---     UPDATE e
---     SET e.address = @address,
---         e.cccd = @cccd,
---         e.job_type = @job_type,
---         e.super_ssn = @super_ssn,
---         e.updated_at = GETDATE()
---     FROM employee e
---     WHERE e.ssn = @ssn;
-
---     -- Update phone numbers for the employee
---     DECLARE @EmployeeSSN INT;
---     SELECT @EmployeeSSN = ssn
---     FROM employee
---     WHERE ssn = @ssn;
-
---     DECLARE @PhoneNumberList TABLE (PhoneNumber VARCHAR(20));
-
---     INSERT INTO @PhoneNumberList (PhoneNumber)
---     SELECT value
---     FROM STRING_SPLIT(@list_phone_number, ',');
-
---     DELETE FROM employee_phone_number
---     WHERE ssn = @EmployeeSSN;
-
---     INSERT INTO employee_phone_number (ssn, phone_number)
---     SELECT @EmployeeSSN, PhoneNumber
---     FROM @PhoneNumberList;
--- END;
 
 CREATE PROCEDURE dbo.proc_UpdateEmployee
     @ssn INT,
@@ -641,46 +471,10 @@ BEGIN
 END;
 GO
 
--- -- Test procedure UpdateEmployee
--- DECLARE @ssn INT = 1;
--- DECLARE @cccd NVARCHAR(50) = '123456789';
--- DECLARE @address NVARCHAR(500) = 'HCM city';
--- DECLARE @job_type NVARCHAR(100) = 'Manager';
--- DECLARE @list_phone_number VARCHAR(MAX) = '0987654321';
--- DECLARE @super_ssn INT = 1;
-
--- EXEC dbo.proc_UpdateEmployee 
---     @ssn,
---     @cccd,
---     @address,
---     @job_type,
---     @list_phone_number,
---     @super_ssn;
--- GO
-
 -- 3. Create procedure to delete employee
 IF OBJECT_ID('dbo.proc_DeleteEmployees', 'P') IS NOT NULL
     DROP PROCEDURE dbo.proc_DeleteEmployees;
 GO
-
--- CREATE PROCEDURE dbo.proc_DeleteEmployee
---     @ssn INT
--- AS
--- BEGIN
---     SET NOCOUNT ON;
-
---     -- Check if the employee exists
---     IF NOT EXISTS (SELECT * FROM employee WHERE ssn = @ssn)
---     BEGIN
---         RAISERROR('Employee does not exist', 16, 1);
---         RETURN;
---     END;
-
---     -- Delete employee
---     DELETE FROM employee
---     WHERE ssn = @ssn;
--- END;
--- GO
 
 CREATE TYPE EmployeeSSNTableType AS TABLE  
 ( SSN INT
@@ -714,14 +508,8 @@ BEGIN
 END;
 GO
 
--- -- Test procedure DeleteEmployee
--- DECLARE @ssn INT = 1;
 
--- EXEC dbo.proc_DeleteEmployee @ssn;
--- GO
-
-
--- Trigger
+-- Initialize trigger
 -- 1. Create trigger to update super_ssn to NULL when delete employee
 IF OBJECT_ID('dbo.trigger_DeleteEmployee', 'TR') IS NOT NULL
     DROP TRIGGER dbo.trigger_DeleteEmployee;
@@ -743,7 +531,111 @@ BEGIN
 END;
 GO
 
--- 2. Create trigger to count the total price of an order
+-- Trigger check discount value of percentage discount
+IF OBJECT_ID('dbo.Check_Promotion_Discount', 'TR') IS NOT NULL
+    DROP TRIGGER dbo.Check_Promotion_Discount; 
+GO
+
+CREATE TRIGGER Check_Promotion_Discount
+ON dbo.promotion
+AFTER INSERT, UPDATE
+AS
+BEGIN
+
+    IF EXISTS (SELECT 1 FROM INSERTED WHERE discount_type = 'PERCENT' AND (discount_value <= 0 OR discount_value > 50))
+    BEGIN
+        RAISERROR ('The discount value for percentage discounts must be within the range of 0 to 50.', 16, 1);
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END
+END;
+GO
+
+IF OBJECT_ID('dbo.Calculate_SubPrice', 'TR') IS NOT NULL
+    DROP TRIGGER dbo.Calculate_SubPrice;
+GO
+
+CREATE TRIGGER Calculate_SubPrice
+ON dbo.size_order
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    -- Khai báo biến
+    DECLARE @current_date DATETIME = GETDATE();
+
+    -- Cập nhật tổng giá cho các đơn hàng vừa được thêm vào
+    UPDATE so
+    SET total_price = 
+        CASE 
+            WHEN p.id IS NOT NULL THEN
+                CASE 
+                    WHEN p.discount_type = 'PERCENT' THEN so.quantity * (1 - p.discount_value / 100) * s.price
+                    WHEN p.discount_type = 'AMOUNT' THEN so.quantity * s.price - p.discount_value
+                END
+            ELSE so.quantity * s.price
+        END
+    FROM dbo.size_order so
+    INNER JOIN INSERTED ins ON so.order_id = ins.order_id AND so.beverage_name = ins.beverage_name AND so.size = ins.size
+    INNER JOIN [order] o ON so.order_id = o.id
+    INNER JOIN size s ON so.beverage_name = s.beverage_name AND so.size = s.size
+    LEFT JOIN promotion p ON o.promotion_id = p.id
+                            AND @current_date BETWEEN p.start_date AND p.end_date
+                            AND p.id IN (
+                                SELECT sp.promotion_id
+                                FROM size_promotion sp
+                                WHERE sp.beverage_name = so.beverage_name
+                                    AND sp.size = so.size
+                                    AND sp.quantity <= so.quantity
+                            );
+
+END;
+GO
+
+
+-- -- Trigger tính tổng tiền trong hóa đơn và tích điểm cho khách hàng:
+
+-- CREATE TRIGGER Calculate_TotalPrice
+-- ON Hoa_don
+-- AFTER INSERT
+-- AS
+-- BEGIN
+
+--     -- Khai báo biến
+--     DECLARE @ma_hd INT;
+--     DECLARE @ma_dh INT;
+--     DECLARE @ma_kh VARCHAR(20);
+--     DECLARE @tong_tien_thanh_toan DECIMAL(18, 2);
+--     DECLARE @diem_tich_luy INT;
+
+--     -- Lấy mã hóa đơn và mã đơn hàng từ bảng vừa chèn
+--     SELECT @ma_hd = ma_hd, @ma_dh = ma_dh FROM INSERTED;
+
+--     -- Lấy mã khách hàng từ bảng Đơn hàng
+--     SELECT @ma_kh = ma_kh FROM Don_hang WHERE ma_dh = @ma_dh;
+
+--     -- Tính toán tổng tiền thanh toán và lưu vào biến từ các mục trong bảng Nam_trong
+--     SELECT @tong_tien_thanh_toan = ISNULL(SUM(tong_tien), 0) FROM Nam_trong WHERE ma_hd = @ma_hd;
+
+--     -- Cập nhật tổng tiền thanh toán trong bảng hóa đơn
+--     UPDATE Hoa_don
+--     SET tong_tien_thanh_toan = @tong_tien_thanh_toan
+--     WHERE ma_hd = @ma_hd;
+
+--     -- Cập nhật điểm tích lũy chỉ cho khách hàng thành viên (không phải mã mặc định)
+--     IF @ma_kh <> '00000000'
+--     BEGIN
+--         -- Tính toán điểm tích lũy dựa trên tổng tiền (giả sử 1 điểm cho mỗi 10000 đồng chi tiêu)
+--         SET @diem_tich_luy = @tong_tien_thanh_toan / 10000;
+
+--         UPDATE Khach_hang
+--         SET diem_tich_luy = diem_tich_luy + @diem_tich_luy
+--         WHERE ma_kh = @ma_kh;
+--     END
+-- END;
+-- GO
+
+
+
 
 
 
@@ -806,46 +698,46 @@ GO
 
 
 -- 2. Create stored procedure to get employee details
-IF OBJECT_ID('dbo.proc_GetEmployeeDetailsFilter', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.proc_GetEmployeeDetailsFilter;
-GO
+-- IF OBJECT_ID('dbo.proc_GetEmployeeDetailsFilter', 'P') IS NOT NULL
+--     DROP PROCEDURE dbo.proc_GetEmployeeDetailsFilter;
+-- GO
 
-CREATE PROCEDURE GetEmployeeDetailsFilter
-    @jobType NVARCHAR(100) = NULL,
-    @gender NVARCHAR(10) = NULL
-AS
-BEGIN
-    SELECT 
-        e.ssn,
-        e.cccd,
-        e.address,
-        e.job_type,
-        e.date_of_work,
-        e.gender,
-        e.date_of_birth,
-        e.last_name,
-        e.middle_name,
-        e.first_name,
-        e.image_url,
-        COUNT(DISTINCT epn.phone_number) AS phone_numbers_count,
-        COUNT(DISTINCT ed.name) AS dependents_count
-    FROM 
-        employee e
-    LEFT JOIN 
-        employee_phone_number epn ON e.ssn = epn.ssn
-    LEFT JOIN 
-        employee_dependent ed ON e.ssn = ed.ssn
-    WHERE 
-        (@jobType IS NULL OR e.job_type = @jobType)
-        AND (@gender IS NULL OR e.gender = @gender)
-    GROUP BY 
-        e.ssn, e.cccd, e.address, e.job_type, e.date_of_work, 
-        e.gender, e.date_of_birth, e.last_name, e.middle_name, 
-        e.first_name, e.image_url
-    ORDER BY 
-        e.last_name, e.first_name;
-END
-GO
+-- CREATE PROCEDURE GetEmployeeDetailsFilter
+--     @jobType NVARCHAR(100) = NULL,
+--     @gender NVARCHAR(10) = NULL
+-- AS
+-- BEGIN
+--     SELECT 
+--         e.ssn,
+--         e.cccd,
+--         e.address,
+--         e.job_type,
+--         e.date_of_work,
+--         e.gender,
+--         e.date_of_birth,
+--         e.last_name,
+--         e.middle_name,
+--         e.first_name,
+--         e.image_url,
+--         COUNT(DISTINCT epn.phone_number) AS phone_numbers_count,
+--         COUNT(DISTINCT ed.name) AS dependents_count
+--     FROM 
+--         employee e
+--     LEFT JOIN 
+--         employee_phone_number epn ON e.ssn = epn.ssn
+--     LEFT JOIN 
+--         employee_dependent ed ON e.ssn = ed.ssn
+--     WHERE 
+--         (@jobType IS NULL OR e.job_type = @jobType)
+--         AND (@gender IS NULL OR e.gender = @gender)
+--     GROUP BY 
+--         e.ssn, e.cccd, e.address, e.job_type, e.date_of_work, 
+--         e.gender, e.date_of_birth, e.last_name, e.middle_name, 
+--         e.first_name, e.image_url
+--     ORDER BY 
+--         e.last_name, e.first_name;
+-- END
+-- GO
 
 
 
@@ -860,41 +752,52 @@ GO
 
 -- Function
 -- Hàm tính tổng số lượng sản phẩm đã bán của một loại sản phẩm cụ thể trong một khoảng thời gian nhất định:
-CREATE FUNCTION dbo.CalculateTotalSalesForProduct (
-    @ProductID INT,
-    @StartDate DATE,
-    @EndDate DATE
+CREATE FUNCTION CalculateTotalSoldQuantity(
+    @beverageName NVARCHAR(50),
+    @startDate DATE,
+    @endDate DATE
 )
 RETURNS INT
 AS
 BEGIN
-    DECLARE @TotalSales INT = 0;
-    DECLARE @QuantitySold INT;
+    DECLARE @totalSoldQuantity INT = 0;
 
-    -- Declare cursor
-    DECLARE ProductCursor CURSOR FOR
-        SELECT Quantity
-        FROM Sales
-        WHERE ProductID = @ProductID
-        AND SaleDate BETWEEN @StartDate AND @EndDate;
+    -- Sử dụng con trỏ để lặp qua các đơn hàng đã bán
+    DECLARE invoiceCursor CURSOR FOR
+    SELECT si.[id]
+    FROM [sale_invoice] si
+    INNER JOIN [order] o ON si.[order_id] = o.[id]
+    INNER JOIN [size_order] so ON so.[order_id] = o.[id]
+    WHERE so.[beverage_name] = @beverageName
+    AND si.[date] BETWEEN @startDate AND @endDate;
 
-    -- Open cursor
-    OPEN ProductCursor;
+    DECLARE @invoiceId INT;
 
-    FETCH NEXT FROM ProductCursor INTO @QuantitySold;
+    OPEN invoiceCursor;
+    FETCH NEXT FROM invoiceCursor INTO @invoiceId;
 
-    -- Calculate total quantity sold
+    -- Lặp qua từng đơn hàng đã bán và tính tổng số lượng sản phẩm đã bán
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        SET @TotalSales = @TotalSales + @QuantitySold;
-        FETCH NEXT FROM ProductCursor INTO @QuantitySold;
+        DECLARE @orderQuantity INT;
+
+        -- Tính tổng số lượng sản phẩm trong đơn hàng đã bán
+        SELECT @orderQuantity = SUM(quantity)
+        FROM [size_order]
+        WHERE [order_id] = @invoiceId
+        AND [beverage_name] = @beverageName;
+
+        -- Cộng số lượng sản phẩm của đơn hàng vào tổng số lượng đã bán
+        SET @totalSoldQuantity = @totalSoldQuantity + @orderQuantity;
+
+        FETCH NEXT FROM invoiceCursor INTO @invoiceId;
     END;
 
-    -- Close cursor
-    CLOSE ProductCursor;
-    DEALLOCATE ProductCursor;
+    CLOSE invoiceCursor;
+    DEALLOCATE invoiceCursor;
 
-    RETURN @TotalSales;
+    -- Trả về tổng số lượng sản phẩm đã bán
+    RETURN @totalSoldQuantity;
 END;
 GO
 
@@ -956,194 +859,573 @@ GO
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- -- Insert data
--- -- 1. Insert data for employee table
--- INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name]) 
--- VALUES 
--- (N'AB123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1980-05-15', N'Nguyễn', N'Văn', N'An'),
--- (N'CD987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1985-10-20', N'Trần', N'Thị', N'Bích'),
--- (N'EF456123789', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1990-03-25', N'Lê', N'Hữu', N'Quốc'),
--- (N'GH789456123', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1995-08-10', N'Phạm', N'Thị', N'Hoài'),
--- (N'IJ321654987', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '1998-12-05', N'Hoàng', N'Văn', N'Bảo'),
--- (N'KL321987321', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1987-02-20', N'Ngô', N'Thị', N'Dung'),
--- (N'MN654987321', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1992-07-15', N'Vũ', N'Đình', N'Anh'),
--- (N'OP789321654', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1996-11-30', N'Đặng', N'Thị', N'Ly'),
--- (N'QR987321654', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1989-04-25', N'Trương', N'Văn', N'Tuấn'),
--- (N'ST321789654', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1994-09-10', N'Bùi', N'Thị', N'Nga'),
--- (N'UV123789654', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1986-01-20', N'Lý', N'Văn', N'Hải'),
--- (N'WX987654321', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1993-06-15', N'Mai', N'Thị', N'Hương'),
--- (N'YZ789123654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1988-11-10', N'Đoàn', N'Văn', N'Thành'),
--- (N'AB456987123', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1991-04-05', N'Võ', N'Thị', N'Mỹ'),
--- (N'CD654321789', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1984-09-30', N'Đinh', N'Văn', N'Dũng');
-
--- INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name], [super_ssn]) 
--- VALUES 
--- (N'XX123456784', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1980-05-15', N'Nguyễn', N'Văn', N'An',1),
--- (N'XX123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1980-05-15', N'Nguyễn', N'Văn', N'An', 1),
--- (N'YY234567890', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1985-10-20', N'Trần', N'Thị', N'Bích', 2),
--- (N'ZZ345678901', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1990-03-25', N'Lê', N'Hữu', N'Quốc', 3),
--- (N'AA456789012', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1995-08-10', N'Phạm', N'Thị', N'Hoài', 4),
--- (N'BB567890123', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '1998-12-05', N'Hoàng', N'Văn', N'Bảo', 5),
--- (N'CC678901234', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1987-02-20', N'Ngô', N'Thị', N'Dung', 6),
--- (N'DD789012345', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1992-07-15', N'Vũ', N'Đình', N'Anh', 7),
--- (N'EE890123456', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1996-11-30', N'Đặng', N'Thị', N'Ly', 8),
--- (N'FF901234567', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1989-04-25', N'Trương', N'Văn', N'Tuấn', 9),
--- (N'GG012345678', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1994-09-10', N'Bùi', N'Thị', N'Nga', 10),
--- (N'HH123456789', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1986-01-20', N'Lý', N'Văn', N'Hải', 11),
--- (N'II234567890', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1993-06-15', N'Mai', N'Thị', N'Hương', 12),
--- (N'JJ345678901', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1988-11-10', N'Đoàn', N'Văn', N'Thành', 13),
--- (N'KK456789012', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1991-04-05', N'Võ', N'Thị', N'Mỹ', 14);
-
-INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name]) 
+INSERT INTO [employee] ([cccd], [address], [job_type], [date_of_work], [gender], [date_of_birth], [last_name], [middle_name], [first_name],[super_ssn],[image_url]) 
 VALUES 
-('AB123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1980-05-15', N'Nguyễn', N'Văn', N'An'),
-('CD987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1985-10-20', N'Trần', N'Thị', N'Bích'),
-('EF456123789', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1990-03-25', N'Lê', N'Hữu', N'Quốc'),
-('GH789456123', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1995-08-10', N'Phạm', N'Thị', N'Hoài'),
-('IJ321654987', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '1998-12-05', N'Hoàng', N'Văn', N'Bảo'),
-('KL321987321', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1987-02-20', N'Ngô', N'Thị', N'Dung'),
-('MN654987321', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1992-07-15', N'Vũ', N'Đình', N'Anh'),
-('OP789321654', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1996-11-30', N'Đặng', N'Thị', N'Ly'),
-('QR987321654', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1989-04-25', N'Trương', N'Văn', N'Tuấn'),
-('ST321789654', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1994-09-10', N'Bùi', N'Thị', N'Nga'),
-('UV123789654', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1986-01-20', N'Lý', N'Văn', N'Hải'),
-('WX987654321', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1993-06-15', N'Mai', N'Thị', N'Hương'),
-('YZ789123654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1988-11-10', N'Đoàn', N'Văn', N'Thành'),
-('AB456987123', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1991-04-05', N'Võ', N'Thị', N'Mỹ'),
-('CD654321789', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1984-09-30', N'Đinh', N'Văn', N'Dũng'),
-('EF123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1981-05-15', N'Nguyễn', N'Văn', N'An'),
-('GH987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1986-10-20', N'Trần', N'Thị', N'Bích'),
-('IJ456123789', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1991-03-25', N'Lê', N'Hữu', N'Quốc'),
-('KL789456123', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1997-08-10', N'Phạm', N'Thị', N'Hoài'),
-('MN321654987', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '1999-12-05', N'Hoàng', N'Văn', N'Bảo'),
-('OP321987321', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1988-02-20', N'Ngô', N'Thị', N'Dung'),
-('QR654987321', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1993-07-15', N'Vũ', N'Đình', N'Anh'),
-('ST789321654', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1997-11-30', N'Đặng', N'Thị', N'Ly'),
-('UV987321654', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1990-04-25', N'Trương', N'Văn', N'Tuấn'),
-('WX321789654', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1995-09-10', N'Bùi', N'Thị', N'Nga'),
-('YZ123789654', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1987-01-20', N'Lý', N'Văn', N'Hải'),
-('AB987654321', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1994-06-15', N'Mai', N'Thị', N'Hương'),
-('CD789123654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1989-11-10', N'Đoàn', N'Văn', N'Thành'),
-('EF456987123', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1992-04-05', N'Võ', N'Thị', N'Mỹ'),
-('GH654321789', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1985-09-30', N'Đinh', N'Văn', N'Dũng'),
-('IJ123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1982-05-15', N'Nguyễn', N'Văn', N'An'),
-('KL987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1987-10-20', N'Trần', N'Thị', N'Bích'),
-('MN456123789', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1992-03-25', N'Lê', N'Hữu', N'Quốc'),
-('OP789456123', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1998-08-10', N'Phạm', N'Thị', N'Hoài'),
-('QR321654987', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '2000-12-05', N'Hoàng', N'Văn', N'Bảo'),
-('ST321987321', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1989-02-20', N'Ngô', N'Thị', N'Dung'),
-('UV654987321', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1994-07-15', N'Vũ', N'Đình', N'Anh'),
-('WX789321654', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1998-11-30', N'Đặng', N'Thị', N'Ly'),
-('YZ987321654', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1991-04-25', N'Trương', N'Văn', N'Tuấn'),
-('AB321789654', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1996-09-10', N'Bùi', N'Thị', N'Nga'),
-('CD123789654', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1988-01-20', N'Lý', N'Văn', N'Hải'),
-('EF987654321', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1995-06-15', N'Mai', N'Thị', N'Hương'),
-('GH789123654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1990-11-10', N'Đoàn', N'Văn', N'Thành'),
-('IJ456987123', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1993-04-05', N'Võ', N'Thị', N'Mỹ'),
-('KL654321789', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1986-09-30', N'Đinh', N'Văn', N'Dũng'),
-('MN123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2024-04-30 09:00:00', N'MALE', '1983-05-15', N'Nguyễn', N'Văn', N'An'),
-('OP987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', N'Thu Ngân', '2024-04-29 08:30:00', N'FEMALE', '1988-10-20', N'Trần', N'Thị', N'Bích'),
-('QR456123789', N'789 Đường Lý Tự Trọng, Thành phố Đà Nẵng', N'Pha chế', '2024-04-28 08:00:00', N'MALE', '1993-03-25', N'Lê', N'Hữu', N'Quốc'),
-('ST789456123', N'101 Đường Trần Hưng Đạo, Thành phố Cần Thơ', N'Phục vụ', '2024-04-27 07:30:00', N'FEMALE', '1999-08-10', N'Phạm', N'Thị', N'Hoài'),
-('UV321654987', N'201 Đường Nguyễn Huệ, Thành phố Hải Phòng', N'Bảo vệ', '2024-04-26 07:00:00', N'MALE', '2001-12-05', N'Hoàng', N'Văn', N'Bảo'),
-('WX321987321', N'301 Đường Võ Văn Kiệt, Thành phố Bình Dương', N'Thu Ngân', '2024-04-25 06:30:00', N'FEMALE', '1990-02-20', N'Ngô', N'Thị', N'Dung'),
-('YZ654987321', N'401 Đường Trần Phú, Thành phố Hải Dương', N'Phục vụ', '2024-04-24 06:00:00', N'MALE', '1995-07-15', N'Vũ', N'Đình', N'Anh'),
-('AB789321654', N'501 Đường Bà Triệu, Thành phố Huế', N'Phục vụ', '2024-04-23 05:30:00', N'FEMALE', '1999-11-30', N'Đặng', N'Thị', N'Ly'),
-('CD987321654', N'601 Đường Phan Đình Phùng, Thành phố Vũng Tàu', N'Pha chế', '2024-04-22 05:00:00', N'MALE', '1992-04-25', N'Trương', N'Văn', N'Tuấn'),
-('EF321789654', N'701 Đường Nguyễn Du, Thành phố Nha Trang', N'Bảo vệ', '2024-04-21 04:30:00', N'FEMALE', '1997-09-10', N'Bùi', N'Thị', N'Nga'),
-('GH123789654', N'801 Đường Nguyễn Thị Minh Khai, Thành phố Long Xuyên', N'Pha chế', '2024-04-20 04:00:00', N'MALE', '1989-01-20', N'Lý', N'Văn', N'Hải'),
-('IJ987654321', N'901 Đường Phạm Văn Đồng, Thành phố Thủ Dầu Một', N'Phục vụ', '2024-04-19 03:30:00', N'FEMALE', '1996-06-15', N'Mai', N'Thị', N'Hương'),
-('KL789321654', N'1001 Đường Nguyễn Thái Học, Thành phố Quy Nhơn', N'Phục vụ', '2024-04-18 03:00:00', N'MALE', '1991-11-10', N'Đoàn', N'Văn', N'Thành'),
-('MN321987321', N'1101 Đường Lý Thường Kiệt, Thành phố Bắc Ninh', N'Bảo vệ', '2024-04-17 02:30:00', N'FEMALE', '1994-04-05', N'Võ', N'Thị', N'Mỹ'),
-('OP654987321', N'1201 Đường Phan Chu Trinh, Thành phố Hòa Bình', N'Pha chế', '2024-04-16 02:00:00', N'MALE', '1987-09-30', N'Đinh', N'Văn', N'Dũng');
-
-INSERT INTO [employee_dependent] ([ssn], [name], [relationship],[phone_number], [address],[date_of_birth],[gender])
-VALUES 
-(1, N'Nguyễn Thị Bình', N'Con', '0123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', '1987-09-30','FEMALE'),
-(1, N'Nguyễn Bình AN', N'Cha', '0123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', '1987-09-30','MALE'),
-(2, N'Nguyễn Văn An', N'Con', '0987654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', '1988-02-22','MALE');
+(N'AB123456789', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', N'Pha chế', '2022-04-30 09:00:00', N'MALE', '1980-05-15', N'Nguyễn', N'Văn', N'An', NULL, 'http://localhost:5000/api/v1/employees/images/1.png'),
+(N'CD987654321', N'456 Đường Nguyễn Văn Linh, Thành phố Hồ Chí Minh', N'Phục vụ', '2023-05-01 10:00:00', N'FEMALE', '1990-06-20', N'Lê', N'Thị', N'Bình', 1, 'http://localhost:5000/api/v1/employees/images/11.png'),
+(N'EF123456789', N'789 Đường Lê Lợi, Thành phố Hồ Chí Minh', N'Thu ngân', '2021-05-02 11:00:00', N'MALE', '1985-07-25', N'Trần', N'Văn', N'Trung', 2, 'http://localhost:5000/api/v1/employees/images/2.jpeg'),
+(N'GH987654321', N'987 Đường Trần Hưng Đạo, Thành phố Hồ Chí Minh', N'Bảo vệ', '2023-05-03 12:00:00', N'FEMALE', '1995-08-30', N'Phạm', N'Thị', N'Hương', 3, 'http://localhost:5000/api/v1/employees/images/12.png'),
+(N'IJ123456789', N'654 Đường Nguyễn Huệ, Thành phố Hồ Chí Minh', N'Pha chế', '2022-05-04 13:00:00', N'MALE', '1988-09-10', N'Huỳnh', N'Văn', N'Thành', 1, 'http://localhost:5000/api/v1/employees/images/3.png'),
+(N'KL987654321', N'321 Đường Lê Duẩn, Thành phố Hồ Chí Minh', N'Phục vụ', '2023-05-05 14:00:00', N'FEMALE', '1992-10-15', N'Võ', N'Thị', N'Yến', 1, 'http://localhost:5000/api/v1/employees/images/13.png'),
+(N'MN123456789', N'987 Đường Nguyễn Thị Minh Khai, Thành phố Hồ Chí Minh', N'Thu ngân', '2019-05-06 15:00:00', N'MALE', '1983-11-20', N'Lý', N'Văn', N'Quân', 4, 'http://localhost:5000/api/v1/employees/images/4.png'),
+(N'OP987654321', N'456 Đường Nguyễn Đình Chiểu, Thành phố Hồ Chí Minh', N'Bảo vệ', '2019-05-07 16:00:00', N'FEMALE', '1997-12-25', N'Đặng', N'Thị', N'Thảo', 4, 'http://localhost:5000/api/v1/employees/images/14.png'),
+(N'QR123456789', N'123 Đường Nguyễn Văn Thủ, Thành phố Hồ Chí Minh', N'Pha chế', '2020-05-08 17:00:00', N'MALE', '1986-01-30', N'Hoàng', N'Văn', N'Nam', 5, 'http://localhost:5000/api/v1/employees/images/5.png'),
+(N'ST987654321', N'789 Đường Lê Lai, Thành phố Hồ Chí Minh', N'Phục vụ', '2021-05-09 18:00:00', N'FEMALE', '1993-02-05', N'Ngô', N'Thị', N'Thùy', 5, 'http://localhost:5000/api/v1/employees/images/15.png'),
+(N'UV123456789', N'987 Đường Trần Phú, Thành phố Hồ Chí Minh', N'Thu ngân', '2022-05-10 19:00:00', N'MALE', '1989-03-10', N'Đỗ', N'Văn', N'Đạt', 3, 'http://localhost:5000/api/v1/employees/images/6.png'),
+(N'WX987654321', N'654 Đường Nguyễn Văn Cừ, Thành phố Hồ Chí Minh', N'Bảo vệ', '2021-05-11 20:00:00', N'FEMALE', '1994-04-15', N'Vương', N'Thị', N'Trinh', 6, 'http://localhost:5000/api/v1/employees/images/16.png'),
+(N'YZ123456789', N'321 Đường Lê Thánh Tôn, Thành phố Hồ Chí Minh', N'Pha chế', '2010-05-12 21:00:00', N'MALE', '1987-05-20', N'Trương', N'Văn', N'Quốc', 7, 'http://localhost:5000/api/v1/employees/images/7.png'),
+(N'AB987654321', N'123 Đường Nguyễn Văn Linh, Thành phố Hồ Chí Minh', N'Phục vụ', '2015-05-13 22:00:00', N'FEMALE', '1991-06-25', N'Đinh', N'Thị', N'Thảo', 7, 'http://localhost:5000/api/v1/employees/images/17.png'),
+(N'CD123456789', N'456 Đường Trần Hưng Đạo, Thành phố Hồ Chí Minh', N'Thu ngân', '2015-05-14 23:00:00', N'MALE', '1984-07-30', N'Lê', N'Văn', N'Thành', 4, 'http://localhost:5000/api/v1/employees/images/8.png'),
+(N'EF987654321', N'789 Đường Nguyễn Huệ, Thành phố Hồ Chí Minh', N'Bảo vệ', '2017-05-15 00:00:00', N'FEMALE', '1996-08-05', N'Phan', N'Thị', N'Hương', 3, 'http://localhost:5000/api/v1/employees/images/18.png'),
+(N'GH123456789', N'987 Đường Lê Duẩn, Thành phố Hồ Chí Minh', N'Pha chế', '2018-05-16 01:00:00', N'MALE', '1981-09-10', N'Hồ', N'Văn', N'Thành', 6, 'http://localhost:5000/api/v1/employees/images/9.png'),
+(N'IJ987654321', N'654 Đường Nguyễn Thị Minh Khai, Thành phố Hồ Chí Minh', N'Phục vụ', '2020-05-17 02:00:00', N'FEMALE', '1990-10-15', N'Vũ', N'Thị', N'Yến', 6, 'http://localhost:5000/api/v1/employees/images/19.png'),
+(N'KL123456789', N'321 Đường Nguyễn Đình Chiểu, Thành phố Hồ Chí Minh', N'Thu ngân', '2017-05-18 03:00:00', N'MALE', '1985-11-20', N'Nguyễn', N'Văn', N'Quân', 6, 'http://localhost:5000/api/v1/employees/images/10.png'),
+(N'MN987654321', N'987 Đường Nguyễn Văn Thủ, Thành phố Hồ Chí Minh', N'Bảo vệ', '2016-05-19 04:00:00', N'FEMALE', '1999-12-25', N'Lý', N'Thị', N'Thảo', 7, 'http://localhost:5000/api/v1/employees/images/20.png');
 
 
 INSERT INTO [employee_phone_number] ([ssn], [phone_number])
 VALUES 
-(1, '0123456789'),
-(2, '0987654321'),
-(3, '0123456789'),
-(4, '0987654321'),
-(5, '0123456789'),
-(6, '0987654321'),
-(7, '0123456789'),
-(8, '0987654321'),
-(9, '0123456789'),
-(10, '0987654321'),
-(11, '0123456789'),
-(12, '0987654321'),
-(13, '0123456789'),
-(14, '0987654321'),
-(15, '0123456789'),
-(16, '0987654321'),
-(17, '0123456789'),
-(18, '0987654321'),
-(19, '0123456789'),
-(20, '0987654321'),
-(21, '0123456789'),
-(22, '0987654321'),
-(23, '0123456789'),
-(24, '0987654321'),
-(25, '0123456789'),
-(26, '0987654321'),
-(27, '0123456789'),
-(28, '0987654321'),
-(29, '0123456789'),
-(30, '0987654321'),
+(1, '0987654321'),
 (1, '0999999999'),
-(2, '0888888888'),
-(3, '0777777777'),
-(4, '0123123444'),
-(5, '7877867687'),
-(6, '2344324234'),
-(7, '5454123534'),
-(8, '4321231231'),
-(9, '0738274823'),
-(10, '0782374861');
+(2, '0965483957'),
+(3, '0946573847'),
+(3, '0987272731'),
+(4, '0987654321'),
+(5, '0999999999'),
+(5, '0909090090'),
+(6, '0965483957'),
+(7, '0946573847'),
+(8, '0987654321'),
+(9, '0999999999'),
+(10, '0965483957'),
+(10, '0965231234'),
+(10, '0912381237'),
+(11, '0946573847'),
+(12, '0987654321'),
+(13, '0999999999'),
+(14, '0965483957'),
+(15, '0946573847'),
+(16, '0987654321'),
+(17, '0999999999'),
+(18, '0965483957'),
+(19, '0946573847'),
+(20, '0987654321');
 
 
--- -- Declare a variable to hold the job type you want to query
--- DECLARE @job_type NVARCHAR(100);
--- SET @job_type = N'Phục vụ'; -- Replace 'YourJobTypeHere' with the actual job type you want to query
+INSERT INTO [full_time_employee] ([ssn], [insurance], [month_salary])
+VALUES
+(1, '123456789', 7000000),
+(2, '234567890', 6000000),
+(3, '345678901', 8000000),
+(9, '901234567', 7000000),
+(10, '012345678', 7500000),
+(11, '123456789', 8000000),
+(12, '234567890', 6000000),
+(13, '345678901', 10000000),
+(15, '567890123', 9000000),
+(17, '789012345', 9000000),
+(18, '890123456', 7000000),
+(19, '901234567', 7000000);
 
--- -- Execute the stored procedure with the specified job type
--- EXEC dbo.proc_GetEmployeeByJobType @job_type;
+
+INSERT INTO [part_time_employee] ([ssn], [hourly_salary])
+VALUES
+(4, 18000),
+(5, 20000),
+(6, 17000),
+(7, 15000),
+(8, 18000),
+(14, 17000),
+(16, 17000),
+(20, 18000);
+
+
+INSERT INTO [part_time_employee_works] ([ssn], [date], [shift])
+VALUES
+(4, '2022-05-01', '7:00 AM - 12:00 AM'),
+(4, '2022-05-02', '12:00 AM - 17:00 PM'),
+(4, '2022-05-03', '7:00 AM - 12:00 AM'),
+(5, '2022-05-01', '7:00 AM - 12:00 AM'),
+(5, '2022-05-02', '17:00 PM - 22:00 PM'),
+(5, '2022-05-03', '7:00 AM - 12:00 AM'),
+(6, '2022-05-01', '12:00 AM - 17:00 PM'),
+(6, '2022-05-02', '17:00 PM - 22:00 PM'),
+(6, '2022-05-03', '7:00 AM - 12:00 AM'),
+(7, '2022-05-01', '7:00 AM - 12:00 AM'),
+(7, '2022-05-02', '17:00 PM - 22:00 PM'),
+(7, '2022-05-03', '7:00 AM - 12:00 AM'),
+(8, '2022-05-01', '7:00 AM - 12:00 AM'),
+(8, '2022-05-02', '17:00 PM - 22:00 PM'),
+(8, '2022-05-03', '7:00 AM - 12:00 AM'),
+(14, '2022-05-01', '7:00 AM - 12:00 AM'),
+(14, '2022-05-02', '12:00 AM - 17:00 PM'),
+(14, '2022-05-03', '7:00 AM - 12:00 AM'),
+(16, '2022-05-01', '17:00 PM - 22:00 PM'),
+(16, '2022-05-02', '7:00 AM - 12:00 AM'),
+(16, '2022-05-03', '12:00 AM - 17:00 PM'),
+(20, '2022-05-01', '7:00 AM - 12:00 AM'),
+(20, '2022-05-02', '17:00 PM - 22:00 PM'),
+(20, '2022-05-03', '7:00 AM - 12:00 AM');
+
+
+INSERT INTO [employee_dependent] ([ssn], [name], [relationship], [phone_number], [address], [date_of_birth], [gender])
+VALUES 
+(1, N'Nguyễn Thị Bình', N'Con', '0987654321', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', '2010-05-15', N'FEMALE'),
+(2, N'Trần Văn Nam', N'Con', '0987654322', N'456 Đường Lê Lợi, Thành phố Hà Nội', '2008-07-20', N'MALE'),
+(3, N'Phạm Thị Hương', N'Vợ', '0987654323', N'789 Đường Phan Xích Long, Thành phố Đà Nẵng', '1985-10-10', N'FEMALE'),
+(4, N'Lê Tuấn Anh', N'Con', '0987654324', N'987 Đường Hùng Vương, Thành phố Cần Thơ', '2012-12-25', N'MALE'),
+(5, N'Vũ Thị Hương', N'Con', '0987654325', N'321 Đường Lê Duẩn, Thành phố Hải Phòng', '2015-03-05', N'FEMALE'),
+(6, N'Dương Văn Điệp', N'Con', '0987654326', N'654 Đường Nguyễn Huệ, Thành phố Đà Lạt', '2007-06-15', N'MALE'),
+(7, N'Nguyễn Thị Ly', N'Con', '0987654327', N'987 Đường Trần Hưng Đạo, Thành phố Vũng Tàu', '2000-09-20', N'FEMALE'),
+(8, N'Trần Hữu Nam', N'Con', '0987654328', N'852 Đường Lý Tự Trọng, Thành phố Nha Trang', '1998-11-30', N'MALE'),
+(9, N'Hoàng Thị Hằng', N'Con', '0987654329', N'741 Đường Nguyễn Du, Thành phố Hội An', '1997-04-10', N'FEMALE'),
+(10, N'Đặng Văn Thu', N'Con', '0987654330', N'963 Đường Trần Phú, Thành phố Phan Thiết', '1996-08-25', N'MALE'),
+(11, N'Lý Thị Mỹ', N'Con', '0987654331', N'159 Đường Lý Thường Kiệt, Thành phố Huế', '1994-01-05', N'FEMALE'),
+(12, N'Ngô Hữu Quân', N'Con', '0987654332', N'357 Đường Nguyễn Công Trứ, Thành phố Quy Nhơn', '1993-05-20', N'MALE'),
+(13, N'Ma Thị Hoa', N'Con', '0987654333', N'258 Đường Phạm Ngũ Lão, Thành phố Tam Kỳ', '1992-07-15', N'FEMALE'),
+(14, N'Lê Văn An', N'Con', '0987654334', N'852 Đường Hồ Xuân Hương, Thành phố Buôn Ma Thuột', '1991-09-30', N'MALE'),
+(15, N'Phan Hữu Hoàng', N'Con', '0987654335', N'741 Đường Lê Hồng Phong, Thành phố Vĩnh Yên', '1990-03-10', N'MALE');
+
+
+INSERT INTO [supplier_invoice] ([date], [time])
+VALUES
+('2022-05-01', '08:00:00'),
+('2022-05-02', '09:00:00'),
+('2022-05-03', '10:00:00'),
+('2022-05-04', '11:00:00'),
+('2022-05-05', '12:00:00'),
+('2022-05-06', '13:00:00'),
+('2022-05-07', '14:00:00'),
+('2022-05-08', '15:00:00'),
+('2022-05-09', '16:00:00'),
+('2022-05-10', '17:00:00'),
+('2022-05-11', '18:00:00'),
+('2022-05-12', '19:00:00'),
+('2022-05-13', '20:00:00'),
+('2022-05-14', '21:00:00'),
+('2022-05-15', '22:00:00'),
+('2022-05-16', '23:00:00'),
+('2022-05-17', '00:00:00'),
+('2022-05-18', '01:00:00'),
+('2022-05-19', '02:00:00'),
+('2022-05-20', '03:00:00');
+
+INSERT INTO [supplier] ([supplier_name])
+VALUES
+(N'Nhà cung cấp A'),
+(N'Nhà cung cấp B'),
+(N'Nhà cung cấp C'),
+(N'Nhà cung cấp D'),
+(N'Nhà cung cấp E'),
+(N'Nhà cung cấp F'),
+(N'Nhà cung cấp G'),
+(N'Nhà cung cấp H'),
+(N'Nhà cung cấp I'),
+(N'Nhà cung cấp J'),
+(N'Nhà cung cấp K'),
+(N'Nhà cung cấp L'),
+(N'Nhà cung cấp M'),
+(N'Nhà cung cấp N'),
+(N'Nhà cung cấp P');
+
+
+INSERT INTO [supplier_item] ([product_name], [unit], [price])
+VALUES
+(N'Cam', 'kg', 10000),            
+(N'Dừa', N'quả', 8000),           
+(N'Chuối', 'kg', 15000),          
+(N'Dâu', 'kg', 120000),            
+(N'Xoài', 'kg', 20000),           
+(N'Dưa hấu', 'kg', 35000),        
+(N'Lê', 'kg', 50000),             
+(N'Nho', 'kg', 200000),            
+(N'Dừa nước', 'kg', 150000),      
+(N'Lựu', 'kg', 8000),           
+(N'Bơ', 'kg', 70000),               
+(N'Dưa lưới', 'kg', 100000),      
+(N'Chanh', 'kg', 50000),          
+(N'Táo', 'kg', 90000),            
+(N'Dừa xiêm', N'quả', 30000),       
+(N'Nho khô', 'kg', 450000),        
+(N'Mơ', 'kg', 100000),                  
+(N'Mận', 'kg', 250000),
+(N'Cà phê', 'kg', 300000);    
+
+
+INSERT INTO [supply] ([quantity], [supplier_name], [supplier_invoice_id], [product_name])
+VALUES
+(100, N'Nhà cung cấp A', 1, N'Cam'),
+(200, N'Nhà cung cấp B', 2, N'Dừa'),
+(150, N'Nhà cung cấp C', 3, N'Chuối'),
+(300, N'Nhà cung cấp D', 4, N'Dâu'),
+(250, N'Nhà cung cấp E', 5, N'Xoài'),
+(180, N'Nhà cung cấp F', 6, N'Dưa hấu'),
+(220, N'Nhà cung cấp G', 7, N'Lê'),
+(270, N'Nhà cung cấp H', 8, N'Nho'),
+(150, N'Nhà cung cấp I', 9, N'Dừa nước'),
+(200, N'Nhà cung cấp J', 10, N'Lựu'),
+(250, N'Nhà cung cấp K', 11, N'Bơ'),
+(180, N'Nhà cung cấp M', 13, N'Dưa lưới'),
+(220, N'Nhà cung cấp N', 14, N'Chanh'),
+(270, N'Nhà cung cấp P', 15, N'Táo'),
+(150, N'Nhà cung cấp A', 16, N'Dừa xiêm'),
+(200, N'Nhà cung cấp B', 17, N'Nho khô'),
+(250, N'Nhà cung cấp C', 18, N'Mơ'),
+(220, N'Nhà cung cấp D', 19, N'Mận'),
+(220, N'Nhà cung cấp F', 20, N'Cà phê');
+
+INSERT INTO [employee_supplier_invoice] ([ssn], [supplier_invoice_id])
+VALUES
+(12, 1),
+(13, 2),
+(14, 3),
+(15, 4),
+(12, 5),
+(13, 6),
+(14, 7),
+(15, 8),
+(12, 9),
+(13, 10),
+(14, 11),
+(15, 12),
+(12, 13),
+(13, 14),
+(2, 15),
+(3, 16),
+(4, 17),
+(5, 18),
+(6, 19),
+(7, 20),
+(15, 16),
+(12, 17),
+(13, 18),
+(14, 19),
+(15, 20),
+(14, 15);
+
+
+INSERT INTO [item_in_store] ([product_name], [unit], [remaining_quantity], [supplier_invoice_id])
+VALUES
+(N'Cam', 'kg', 70, 1),
+(N'Dừa', N'quả', 180, 2),
+(N'Chuối', 'kg', 120, 3),
+(N'Dâu', 'kg', 250, 4),
+(N'Xoài', 'kg', 100, 5),
+(N'Dưa hấu', 'kg', 150, 6),
+(N'Lê', 'kg', 200, 7),
+(N'Nho', 'kg', 190, 8),
+(N'Dừa nước', 'kg', 80, 9),
+(N'Lựu', 'kg', 150, 10),
+(N'Bơ', 'kg', 200, 11),
+(N'Dưa lưới', 'kg', 60, 13),
+(N'Chanh', 'kg', 100, 14),
+(N'Táo', 'kg', 250, 15),
+(N'Dừa xiêm', N'quả', 100, 16),
+(N'Nho khô', 'kg', 150, 17),
+(N'Mơ', 'kg', 200, 18),
+(N'Mận', 'kg', 100, 19),
+(N'Cà phê', 'kg', 20, 20);
+
+
+INSERT INTO [beverage] ([beverage_name], [image_url])
+VALUES
+(N'Cà phê sữa', 'http://localhost:5000/api/v1/products/images/1.jpeg'),
+(N'Cà phê đen', 'http://localhost:5000/api/v1/products/images/2.jpeg'),
+(N'Nước cam', 'http://localhost:5000/api/v1/products/images/3.jpeg'),
+(N'Nước dừa', 'http://localhost:5000/api/v1/products/images/4.jpeg'),
+(N'Nước chanh', 'http://localhost:5000/api/v1/products/images/5.jpeg'),
+(N'Sinh tố dâu', 'http://localhost:5000/api/v1/products/images/6.jpeg'),
+(N'Nước ép lựu', 'http://localhost:5000/api/v1/products/images/7.jpeg'),
+(N'Sinh tố bơ', 'http://localhost:5000/api/v1/products/images/8.jpeg'),
+(N'Sinh tố chuối', 'http://localhost:5000/api/v1/products/images/9.jpeg'),
+(N'Sinh tố xoài', 'http://localhost:5000/api/v1/products/images/10.jpeg'),
+(N'Nước ép dưa hấu', 'http://localhost:5000/api/v1/products/images/11.jpeg'),
+(N'Sinh tố nho', 'http://localhost:5000/api/v1/products/images/12.jpeg'),
+(N'Nước ép táo', 'http://localhost:5000/api/v1/products/images/13.jpeg'),
+(N'Nước ép lê', 'http://localhost:5000/api/v1/products/images/14.jpeg'),
+(N'Nước ép mơ', 'http://localhost:5000/api/v1/products/images/15.jpeg'),
+(N'Sinh tố mận', 'http://localhost:5000/api/v1/products/images/16.jpeg'),
+(N'Sinh tố dừa xiêm', 'http://localhost:5000/api/v1/products/images/17.jpeg'),
+(N'Sinh tố nho khô', 'http://localhost:5000/api/v1/products/images/18.jpeg'),
+(N'Sinh tố thập cẩm', 'http://localhost:5000/api/v1/products/images/19.jpeg'),
+(N'Nước ép thập cẩm', 'http://localhost:5000/api/v1/products/images/20.jpeg');
+
+
+INSERT INTO [size] ([size], [price], [beverage_name])
+VALUES
+(N'Lớn', 30000, N'Cà phê sữa'),
+(N'Vừa', 25000, N'Cà phê sữa'),
+(N'Nhỏ', 20000, N'Cà phê sữa'),
+(N'Lớn', 20000, N'Cà phê đen'),
+(N'Vừa', 15000, N'Cà phê đen'),
+(N'Nhỏ', 10000, N'Cà phê đen'),
+(N'Lớn', 15000, N'Nước cam'),
+(N'Vừa', 12000, N'Nước cam'),
+(N'Nhỏ', 10000, N'Nước cam'),
+(N'Lớn', 20000, N'Nước dừa'),
+(N'Vừa', 15000, N'Nước dừa'),
+(N'Nhỏ', 10000, N'Nước dừa'),
+(N'Lớn', 15000, N'Nước chanh'),
+(N'Vừa', 12000, N'Nước chanh'),
+(N'Nhỏ', 10000, N'Nước chanh'),
+(N'Lớn', 25000, N'Sinh tố dâu'),
+(N'Vừa', 20000, N'Sinh tố dâu'),
+(N'Nhỏ', 15000, N'Sinh tố dâu'),
+(N'Lớn', 35000, N'Nước ép lựu'),
+(N'Vừa', 30000, N'Nước ép lựu'),
+(N'Nhỏ', 25000, N'Nước ép lựu'),
+(N'Lớn', 50000, N'Sinh tố bơ'),
+(N'Vừa', 45000, N'Sinh tố bơ'),
+(N'Nhỏ', 40000, N'Sinh tố bơ'),
+(N'Lớn', 20000, N'Sinh tố chuối'),
+(N'Vừa', 15000, N'Sinh tố chuối'),
+(N'Nhỏ', 10000, N'Sinh tố chuối'),
+(N'Lớn', 30000, N'Sinh tố xoài'),
+(N'Vừa', 25000, N'Sinh tố xoài'),
+(N'Nhỏ', 20000, N'Sinh tố xoài'),
+(N'Lớn', 35000, N'Nước ép dưa hấu'),
+(N'Vừa', 30000, N'Nước ép dưa hấu'),
+(N'Nhỏ', 25000, N'Nước ép dưa hấu'),
+(N'Lớn', 50000, N'Sinh tố nho'),
+(N'Vừa', 45000, N'Sinh tố nho'),
+(N'Nhỏ', 40000, N'Sinh tố nho'),
+(N'Lớn', 20000, N'Nước ép táo'),
+(N'Vừa', 15000, N'Nước ép táo'),
+(N'Nhỏ', 10000, N'Nước ép táo'),
+(N'Lớn', 25000, N'Nước ép lê'),
+(N'Vừa', 20000, N'Nước ép lê'),
+(N'Nhỏ', 15000, N'Nước ép lê'),
+(N'Lớn', 30000, N'Nước ép mơ'),
+(N'Vừa', 25000, N'Nước ép mơ'),
+(N'Nhỏ', 20000, N'Nước ép mơ'),
+(N'Lớn', 20000, N'Sinh tố mận'),
+(N'Vừa', 15000, N'Sinh tố mận'),
+(N'Nhỏ', 10000, N'Sinh tố mận'),
+(N'Lớn', 30000, N'Sinh tố dừa xiêm'),
+(N'Vừa', 25000, N'Sinh tố dừa xiêm'),
+(N'Nhỏ', 20000, N'Sinh tố dừa xiêm'),
+(N'Lớn', 45000, N'Sinh tố nho khô'),
+(N'Vừa', 40000, N'Sinh tố nho khô'),
+(N'Nhỏ', 35000, N'Sinh tố nho khô'),
+(N'Lớn', 50000, N'Sinh tố thập cẩm'),
+(N'Vừa', 45000, N'Sinh tố thập cẩm'),
+(N'Nhỏ', 40000, N'Sinh tố thập cẩm'),
+(N'Lớn', 35000, N'Nước ép thập cẩm'),
+(N'Vừa', 30000, N'Nước ép thập cẩm'),
+(N'Nhỏ', 25000, N'Nước ép thập cẩm');
+
+INSERT INTO [size_item_in_store] ([product_name], [size], [quantity], [beverage_name])
+VALUES
+(N'Cam', N'Lớn', 40, N'Nước cam'),
+(N'Cam', N'Vừa', 30, N'Nước cam'),
+(N'Cam', N'Nhỏ', 20, N'Nước cam'),
+(N'Dừa', N'Lớn', 100, N'Nước dừa'),
+(N'Dừa', N'Vừa', 50, N'Nước dừa'),
+(N'Dừa', N'Nhỏ', 30, N'Nước dừa'),
+(N'Chuối', N'Lớn', 70, N'Sinh tố chuối'),
+(N'Chuối', N'Vừa', 30, N'Sinh tố chuối'),
+(N'Chuối', N'Nhỏ', 20, N'Sinh tố chuối'),
+(N'Dâu', N'Lớn', 150, N'Sinh tố dâu'),
+(N'Dâu', N'Vừa', 50, N'Sinh tố dâu'),
+(N'Dâu', N'Nhỏ', 50, N'Sinh tố dâu'),
+(N'Xoài', N'Lớn', 50, N'Sinh tố xoài'),
+(N'Xoài', N'Vừa', 30, N'Sinh tố xoài'),
+(N'Xoài', N'Nhỏ', 20, N'Sinh tố xoài'),
+(N'Dưa hấu', N'Lớn', 100, N'Nước ép dưa hấu'),
+(N'Dưa hấu', N'Vừa', 50, N'Nước ép dưa hấu'),
+(N'Dưa hấu', N'Nhỏ', 30, N'Nước ép dưa hấu'),
+(N'Lê', N'Lớn', 120, N'Nước ép lê'),
+(N'Lê', N'Vừa', 50, N'Nước ép lê'),
+(N'Lê', N'Nhỏ', 30, N'Nước ép lê'),
+(N'Nho', N'Lớn', 100, N'Sinh tố nho'),
+(N'Nho', N'Vừa', 50, N'Sinh tố nho'),
+(N'Nho', N'Nhỏ', 40, N'Sinh tố nho'),
+(N'Dừa nước', N'Lớn', 40, N'Nước dừa'),
+(N'Dừa nước', N'Vừa', 30, N'Nước dừa'),
+(N'Dừa nước', N'Nhỏ', 10, N'Nước dừa'),
+(N'Lựu', N'Lớn', 70, N'Nước ép lựu'),
+(N'Lựu', N'Vừa', 30, N'Nước ép lựu'),
+(N'Lựu', N'Nhỏ', 20, N'Nước ép lựu'),
+(N'Bơ', N'Lớn', 100, N'Sinh tố bơ'),
+(N'Bơ', N'Vừa', 50, N'Sinh tố bơ'),
+(N'Bơ', N'Nhỏ', 30, N'Sinh tố bơ'),
+(N'Chanh', N'Lớn', 70, N'Nước chanh'),
+(N'Chanh', N'Vừa', 30, N'Nước chanh'),
+(N'Chanh', N'Nhỏ', 20, N'Nước chanh'),
+(N'Táo', N'Lớn', 100, N'Nước ép táo'),
+(N'Táo', N'Vừa', 50, N'Nước ép táo'),
+(N'Táo', N'Nhỏ', 30, N'Nước ép táo'),
+(N'Dừa xiêm', N'Lớn', 40, N'Sinh tố dừa xiêm'),
+(N'Dừa xiêm', N'Vừa', 30, N'Sinh tố dừa xiêm'),
+(N'Dừa xiêm', N'Nhỏ', 20, N'Sinh tố dừa xiêm'),
+(N'Mơ', N'Lớn', 100, N'Nước ép mơ'),
+(N'Mơ', N'Vừa', 50, N'Nước ép mơ'),
+(N'Mơ', N'Nhỏ', 30, N'Nước ép mơ'),
+(N'Mận', N'Lớn', 70, N'Sinh tố mận'),
+(N'Mận', N'Vừa', 30, N'Sinh tố mận'),
+(N'Mận', N'Nhỏ', 20, N'Sinh tố mận'),
+(N'Cà phê', N'Lớn', 40, N'Cà phê sữa'),
+(N'Cà phê', N'Vừa', 30, N'Cà phê sữa'),
+(N'Cà phê', N'Nhỏ', 20, N'Cà phê sữa');
+
+
+SET IDENTITY_INSERT [customer] ON;
+
+-- Insert the first record with id = 0
+INSERT INTO [customer] ([id], [name], [phone_number], [date_of_birth])
+VALUES (0, N'Khách vãng lai', NULL, NULL);
+
+-- Disable identity insert
+SET IDENTITY_INSERT [customer] OFF;
+
+INSERT INTO [customer]  ([name], [phone_number], [date_of_birth])
+VALUES
+(N'Nguyễn Văn An', '0987654321', '1990-05-15'),
+(N'Trần Thị Bình', '0987654322', '1992-07-20'),
+(N'Phạm Văn Cường', '0987654323', '1995-10-10'),
+(N'Lê Thị Dung', '0987654324', '1998-12-25'),
+(N'Vũ Thị Hương', '0987654325', '2000-03-05'),
+(N'Dương Văn Điệp', '0987654326', '2002-06-15'),
+(N'Nguyễn Thị Ly', '0987654327', '2005-09-20'),
+(N'Trần Hữu Nam', '0987654328', '2008-11-30'),
+(N'Hoàng Thị Hằng', '0987654329', '2010-04-10'),
+(N'Đặng Văn Thu', '0987654330', '2012-08-25'),
+(N'Lý Thị Mỹ', '0987654331', '2014-01-05'),
+(N'Ngô Hữu Quân', '0987654332', '2016-05-20'),
+(N'Ma Thị Hoa', '0987654333', '2018-07-15'),
+(N'Lê Văn An', '0987654334', '2020-09-30'),
+(N'Phan Hữu Hoàng', '0987654335', '2022-03-10');
+
+
+INSERT INTO [promotion] ([promotion_name], [start_date], [end_date], [discount_type], [discount_value])
+VALUES
+(N'Khuyến mãi 1', '2024-05-01', '2024-05-30', N'PERCENT', 10),
+(N'Khuyến mãi 2', '2024-05-01', '2024-05-30', N'AMOUNT', 30000),
+(N'Khuyến mãi 3', '2024-05-01', '2024-05-30', N'PERCENT', 20),
+(N'Khuyến mãi 4', '2024-05-01', '2024-05-30', N'AMOUNT', 20000),
+(N'Khuyến mãi 5', '2024-05-01', '2024-05-30', N'PERCENT', 30),
+(N'Khuyến mãi 6', '2024-05-01', '2024-05-30', N'AMOUNT', 70000),
+(N'Khuyến mãi 7', '2024-05-01', '2024-05-30', N'PERCENT', 40),
+(N'Khuyến mãi 8', '2024-05-01', '2024-05-30', N'AMOUNT', 80000),
+(N'Khuyến mãi 9', '2024-05-01', '2024-05-30', N'PERCENT', 50),
+(N'Khuyến mãi 10', '2024-05-01', '2024-05-30', N'AMOUNT', 100000);
+
+
+INSERT INTO [size_promotion] ([size], [beverage_name], [promotion_id], [quantity])
+VALUES
+(N'Lớn', N'Cà phê sữa', 1, 2),
+(N'Lớn', N'Sinh tố dừa xiêm', 1, 4),
+(N'Vừa', N'Cà phê đen', 2, 4),
+(N'Vừa', N'Sinh tố nho khô', 2, 5),
+(N'Nhỏ', N'Nước cam', 3, 2),
+(N'Nhỏ', N'Sinh tố mận', 3, 3),
+(N'Lớn', N'Nước dừa', 4, 2),
+(N'Lớn', N'Sinh tố thập cẩm', 4, 1),
+(N'Vừa', N'Nước chanh', 5, 2),
+(N'Vừa', N'Nước ép lựu', 6, 3),
+(N'Nhỏ', N'Sinh tố bơ', 7, 5),
+(N'Nhỏ', N'Sinh tố chuối', 8, 10),
+(N'Lớn', N'Sinh tố xoài', 9, 7),
+(N'Lớn', N'Nước ép dưa hấu', 10, 10);
+
+
+INSERT INTO [order] ([order_type], [note], [employee_ssn], [customer_id], [promotion_id])
+VALUES
+(N'Tại chỗ', N'Không đường', 1, 1, 1),
+(N'Mang về', N'Ít đá', 2, 2, 2),
+(N'Tại chỗ', N'Nhiều đường', 3, 3, 3),
+(N'Mang về', N'Nhiều đá', 4, 4, 4),
+(N'Tại chỗ', N'Không đường', 5, 5, 5),
+(N'Mang về', N'Ít đá', 6, 6, 6),
+(N'Tại chỗ', N'Nhiều đường', 7, 7, 7),
+(N'Mang về', N'Nhiều đá', 8, 8, 8),
+(N'Tại chỗ', N'Không đường', 9, 9, 9),
+(N'Mang về', N'Ít đá', 10, 10, 10),
+(N'Tại chỗ', N'Nhiều đường', 11, 11, NULL),
+(N'Mang về', N'Nhiều đá', 12, 12, NULL),
+(N'Tại chỗ', N'Không đường', 13, 13, NULL),
+(N'Mang về', N'Ít đá', 14, 14, NULL),
+(N'Tại chỗ', N'Nhiều đường', 15, 15, NULL),
+(N'Mang về', N'Nhiều đá', 16, 0, NULL),
+(N'Tại chỗ', N'Không đường', 17, 0, NULL),
+(N'Mang về', N'Ít đá', 18, 0, NULL),
+(N'Tại chỗ', N'Nhiều đường', 19, 0, NULL),
+(N'Mang về', N'Nhiều đá', 20, 0, NULL);
+
+
+INSERT INTO [customer_order] ([customer_id], [order_id], [comment])
+VALUES
+(1, 1, N'Nước rất ngon'),
+(2, 2, N'Sẽ ủng hộ quán'),
+(3, 3, N'Đường hơi ít'),
+(4, 4, N'Đường hơi nhiều'),
+(5, 5, N'Đá hơi ít'),
+(6, 6, N'Nước rất ngon'),
+(7, 7, N'Đá hơi nhiều'),
+(8, 8, N'Đường hơi ít'),
+(9, 9, N'Đường hơi nhiều'),
+(10, 10, N'Đá hơi ít'),
+(11, 11, N'Nước rất ngon'),
+(12, 12, N'Đá hơi nhiều'),
+(13, 13, N'Đường hơi ít'),
+(14, 14, N'Đường hơi nhiều'),
+(15, 15, N'Đá hơi ít'),
+(0, 17, N'Đá hơi nhiều'),
+(0, 18, N'Đường hơi ít'),
+(0, 19, N'Đường hơi nhiều'),
+(0, 20, N'Đá hơi ít');
+
+
+INSERT INTO [size_order] ([size], [quantity], [order_id], [beverage_name])
+VALUES
+(N'Lớn', 2, 1, N'Cà phê sữa'),
+(N'Lớn', 4, 1, N'Sinh tố dừa xiêm'),
+(N'Vừa', 4, 2, N'Cà phê đen'),
+(N'Vừa', 5, 2, N'Sinh tố nho khô'),
+(N'Nhỏ', 2, 3, N'Nước cam'),
+(N'Nhỏ', 3, 3, N'Sinh tố mận'),
+(N'Lớn', 2, 4, N'Nước dừa'),
+(N'Lớn', 1, 4, N'Sinh tố thập cẩm'),
+(N'Vừa', 1, 5, N'Nước chanh'),
+(N'Vừa', 3, 6, N'Nước ép lựu'),
+(N'Nhỏ', 5, 7, N'Sinh tố bơ'),
+(N'Nhỏ', 3, 8, N'Sinh tố chuối'),
+(N'Lớn', 7, 9, N'Sinh tố xoài'),
+(N'Lớn', 10, 10, N'Nước ép dưa hấu'),
+(N'Vừa', 2, 11, N'Sinh tố nho'),
+(N'Vừa', 3, 12, N'Nước ép táo'),
+(N'Nhỏ', 1, 13, N'Nước ép lê'),
+(N'Nhỏ', 2, 14, N'Nước ép mơ'),
+(N'Lớn', 2, 14, N'Sinh tố mận'),
+(N'Lớn', 3, 15, N'Nước ép lựu'),
+(N'Vừa', 4, 16, N'Sinh tố dâu'),
+(N'Nhỏ', 5, 17, N'Nước cam'),
+(N'Lớn', 6, 18, N'Nước dừa'),
+(N'Vừa', 1, 19, N'Nước chanh'),
+(N'Nhỏ', 2, 20, N'Cà phê sữa');
+
+
+INSERT INTO [sale_invoice] ([date], [time], [payment_method], [order_id])
+VALUES
+(N'2022-05-01', '08:00:00', N'Tiền mặt', 1),
+(N'2022-05-02', '09:00:00', N'Tiền mặt', 2),
+(N'2022-05-03', '10:00:00', N'Chuyển khoản', 3),
+(N'2022-05-04', '11:00:00', N'Chuyển khoản', 4),
+(N'2022-05-05', '12:00:00', N'Tiền mặt', 5),
+(N'2022-05-06', '13:00:00', N'Tiền mặt', 6),
+(N'2022-05-07', '14:00:00', N'Chuyển khoản', 7),
+(N'2022-05-08', '15:00:00', N'Chuyển khoản', 8),
+(N'2022-05-09', '16:00:00', N'Tiền mặt', 9),
+(N'2022-05-10', '17:00:00', N'Tiền mặt', 10),
+(N'2022-05-11', '18:00:00', N'Chuyển khoản', 11),
+(N'2022-05-12', '19:00:00', N'Chuyển khoản', 12),
+(N'2022-05-12', '20:00:00', N'Tiền mặt', 13),
+(N'2022-05-12', '21:00:00', N'Tiền mặt', 14),
+(N'2022-05-12', '22:00:00', N'Chuyển khoản', 15),
+(N'2022-05-12', '23:00:00', N'Chuyển khoản', 16),
+(N'2022-05-15', '08:00:00', N'Tiền mặt', 17),
+(N'2022-05-15', '09:00:00', N'Tiền mặt', 18),
+(N'2022-05-15', '10:00:00', N'Chuyển khoản', 19),
+(N'2022-05-15', '11:00:00', N'Chuyển khoản', 20);
+
+
