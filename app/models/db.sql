@@ -38,6 +38,7 @@ BEGIN
     );
 END;
 
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'employee_phone_number')
 BEGIN
     CREATE TABLE [employee_phone_number] (
@@ -47,6 +48,7 @@ BEGIN
       CONSTRAINT [fk_emp_phone_number] FOREIGN KEY ([ssn]) REFERENCES [employee] ([ssn]) ON DELETE CASCADE
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'full_time_employee')
 BEGIN
@@ -58,6 +60,7 @@ BEGIN
       CONSTRAINT [fk_ft_emp] FOREIGN KEY ([ssn]) REFERENCES [employee] ([ssn]) ON DELETE CASCADE
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'part_time_employee')
 BEGIN
@@ -99,6 +102,7 @@ BEGIN
     );
 END;
 
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'supplier_invoice')
 BEGIN
     CREATE TABLE [supplier_invoice] (
@@ -109,6 +113,7 @@ BEGIN
     );
 END;
 
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'supplier')
 BEGIN
     CREATE TABLE [supplier] (
@@ -116,6 +121,7 @@ BEGIN
       PRIMARY KEY ([supplier_name])
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'supplier_item')
 BEGIN
@@ -126,6 +132,7 @@ BEGIN
       PRIMARY KEY ([product_name])
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'supply')
 BEGIN
@@ -141,6 +148,7 @@ BEGIN
     );
 END;
 
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'employee_supplier_invoice')
 BEGIN
     CREATE TABLE [employee_supplier_invoice] (
@@ -151,6 +159,7 @@ BEGIN
       CONSTRAINT [fk_supplier_invoice_id] FOREIGN KEY ([supplier_invoice_id]) REFERENCES [supplier_invoice] ([id]) ON DELETE CASCADE
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'item_in_store')
 BEGIN
@@ -174,6 +183,7 @@ BEGIN
     );
 END;
 
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'size')
 BEGIN
     CREATE TABLE [size] (
@@ -184,6 +194,7 @@ BEGIN
       CONSTRAINT [fk_beverage_size] FOREIGN KEY ([beverage_name]) REFERENCES [beverage] ([beverage_name]) ON DELETE CASCADE
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'size_item_in_store')
 BEGIN
@@ -198,6 +209,7 @@ BEGIN
     );
 END;
 
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'customer')
 BEGIN
     CREATE TABLE [customer] (
@@ -205,9 +217,11 @@ BEGIN
       [name] NVARCHAR(50) NOT NULL,
       [phone_number] VARCHAR(50) NULL,
       [date_of_birth] DATE NULL,
+      [bonus_point] INT NULL,
       PRIMARY KEY ([id])
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'promotion')
 BEGIN
@@ -221,6 +235,7 @@ BEGIN
       PRIMARY KEY ([id])
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'order')
 BEGIN
@@ -238,6 +253,7 @@ BEGIN
     );
 END;
 
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'customer_order')
 BEGIN
     CREATE TABLE [customer_order] (
@@ -249,6 +265,7 @@ BEGIN
       CONSTRAINT [fk_customer_order_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id])
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'sale_invoice')
 BEGIN
@@ -263,20 +280,6 @@ BEGIN
       CONSTRAINT [fk_sale_invoice_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id]) ON DELETE CASCADE
     );
 END;
-
--- IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'size_sale_invoice')
--- BEGIN
---     CREATE TABLE [size_sale_invoice] (
---       [size] NVARCHAR(50) NOT NULL,
---       [quantity] INT NOT NULL,
---       [beverage_name] NVARCHAR(50) NOT NULL,
---       [subTotal] DECIMAL(10,2) NULL,
---       [sale_invoice_id] INT NOT NULL,
---       PRIMARY KEY ([size],[beverage_name],[sale_invoice_id]),
---       CONSTRAINT [fk_size_sale_invoice_size] FOREIGN KEY ([size],[beverage_name]) REFERENCES [size] ([size],[beverage_name]) ON DELETE CASCADE,
---       CONSTRAINT [fk_size_sale_invoice_sale_invoice] FOREIGN KEY ([sale_invoice_id]) REFERENCES [sale_invoice] ([id]) ON DELETE CASCADE
---     );
--- END;
 
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'size_promotion')
@@ -293,15 +296,15 @@ BEGIN
 END;
 
 
--- Chưa rõ định nghĩa chỗ bàn
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'table')
 BEGIN
     CREATE TABLE [table] (
-      [id] INT NOT NULL IDENTITY(1,1),
+      [id] INT NOT NULL,
       [number_seat] INT NOT NULL,
       PRIMARY KEY ([id])
     );
 END;
+
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'order_table')
 BEGIN
@@ -314,17 +317,6 @@ BEGIN
     );
 END;
 
-
--- IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'promotion_order')
--- BEGIN
---     CREATE TABLE [promotion_order] (
---       [order_id] INT NOT NULL,
---       [promotion_id] INT NOT NULL,
---       PRIMARY KEY ([order_id]),
---       CONSTRAINT [fk_promotion_order_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id]) ON DELETE CASCADE,
---       CONSTRAINT [fk_promotion_order_promotion] FOREIGN KEY ([promotion_id]) REFERENCES [promotion] ([id]) ON DELETE CASCADE
---     );
--- END;
 
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'delivery_service')
 BEGIN
@@ -348,6 +340,7 @@ BEGIN
     );
 END;
 
+
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'size_order')
 BEGIN
     CREATE TABLE [size_order] (
@@ -362,7 +355,6 @@ BEGIN
     );
 END;
 GO
-
 
 
 -- Procedure to insert, update, delete employee
@@ -455,7 +447,6 @@ BEGIN
         RAISERROR('Super ssn does not exist', 16, 1);
         RETURN;
     END;
-
 
     -- Update employee
     UPDATE e
@@ -551,6 +542,7 @@ BEGIN
 END;
 GO
 
+
 IF OBJECT_ID('dbo.Calculate_SubPrice', 'TR') IS NOT NULL
     DROP TRIGGER dbo.Calculate_SubPrice;
 GO
@@ -561,38 +553,84 @@ AFTER INSERT, UPDATE
 AS
 BEGIN
     -- Khai báo biến
-    DECLARE @current_date DATETIME = GETDATE();
+    DECLARE @ma_dh INT;
+    DECLARE @ma_km INT;
+    DECLARE @ten_thuc_uong NVARCHAR(100);
+    DECLARE @size NVARCHAR(50);
+    DECLARE @quantity INT;
+    DECLARE @current_date DATETIME;
+    DECLARE @promotion_active BIT;
+    DECLARE @discount_type NVARCHAR(50);
+    DECLARE @discount_value DECIMAL(10, 2);
+    DECLARE @total_price DECIMAL(10, 2);
+    
+    -- Open cursor
+    DECLARE insert_cursor CURSOR FOR
+    SELECT size, quantity, order_id, beverage_name
+    FROM INSERTED;
 
-    -- Cập nhật tổng giá cho các đơn hàng vừa được thêm vào
-    UPDATE so
-    SET total_price = 
-        CASE 
-            WHEN p.id IS NOT NULL THEN
-                CASE 
-                    WHEN p.discount_type = 'PERCENT' THEN so.quantity * (1 - p.discount_value / 100) * s.price
-                    WHEN p.discount_type = 'AMOUNT' THEN so.quantity * s.price - p.discount_value
-                END
-            ELSE so.quantity * s.price
+    -- Initialize variables
+    SET @current_date = GETDATE();
+    SET @promotion_active = 0;
+
+    OPEN insert_cursor;
+    FETCH NEXT FROM insert_cursor INTO @size, @quantity, @ma_dh, @ten_thuc_uong;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+
+        SET @ma_km = NULL;
+        SET @discount_type = NULL;
+        SET @discount_value = NULL;
+
+        -- Lấy mã khuyến mãi từ bảng Đơn hàng
+        SELECT @ma_km = promotion_id
+        FROM [order]
+        WHERE id = @ma_dh;
+
+        -- Kiểm tra khuyến mãi có hợp lệ và còn hiệu lực không
+        IF EXISTS (
+            SELECT 1 FROM promotion p
+            JOIN size_promotion sp ON p.id = sp.promotion_id
+            WHERE p.id = @ma_km
+                AND @current_date BETWEEN p.start_date AND p.end_date
+                AND sp.beverage_name = @ten_thuc_uong
+                AND sp.size = @size
+                AND sp.quantity <= @quantity
+        )
+        BEGIN
+            SET @promotion_active = 1;
+            SELECT @discount_type = discount_type, @discount_value = discount_value
+            FROM promotion WHERE id = @ma_km;
         END
-    FROM dbo.size_order so
-    INNER JOIN INSERTED ins ON so.order_id = ins.order_id AND so.beverage_name = ins.beverage_name AND so.size = ins.size
-    INNER JOIN [order] o ON so.order_id = o.id
-    INNER JOIN size s ON so.beverage_name = s.beverage_name AND so.size = s.size
-    LEFT JOIN promotion p ON o.promotion_id = p.id
-                            AND @current_date BETWEEN p.start_date AND p.end_date
-                            AND p.id IN (
-                                SELECT sp.promotion_id
-                                FROM size_promotion sp
-                                WHERE sp.beverage_name = so.beverage_name
-                                    AND sp.size = so.size
-                                    AND sp.quantity <= so.quantity
-                            );
 
+        -- Tính tổng giá tiền cho mỗi size của thức uống
+        SET @total_price = 
+            CASE 
+                WHEN @promotion_active = 1 AND @discount_type = 'PERCENT' THEN @quantity * (SELECT price FROM size WHERE size = @size AND beverage_name = @ten_thuc_uong) * (1 - @discount_value / 100)
+                WHEN @promotion_active = 1 AND @discount_type = 'AMOUNT' THEN @quantity * (SELECT price FROM size WHERE size = @size AND beverage_name = @ten_thuc_uong) - @discount_value
+                ELSE @quantity * (SELECT price FROM size WHERE size = @size AND beverage_name = @ten_thuc_uong)
+            END;
+            
+        -- Cập nhật tổng tiền trong bảng 'Bao gồm' dựa trên giá và số lượng
+        UPDATE [size_order]
+        SET total_price = @total_price
+        WHERE order_id = @ma_dh
+            AND beverage_name = @ten_thuc_uong
+            AND size = @size;
+
+        -- Fetch the next row from the cursor
+        FETCH NEXT FROM insert_cursor INTO @size, @quantity, @ma_dh, @ten_thuc_uong;
+    END;
+
+    -- Close the cursor
+    CLOSE insert_cursor;
+    DEALLOCATE insert_cursor;
 END;
 GO
 
 
--- -- Trigger tính tổng tiền trong hóa đơn và tích điểm cho khách hàng:
+-- Trigger tính tổng tiền trong hóa đơn và tích điểm cho khách hàng:
 
 -- CREATE TRIGGER Calculate_TotalPrice
 -- ON Hoa_don
@@ -751,16 +789,36 @@ GO
 
 
 -- Function
+IF OBJECT_ID('dbo.CalculateTotalSoldQuantity', 'FN') IS NOT NULL
+    DROP FUNCTION dbo.CalculateTotalSoldQuantity;
+GO
+
 -- Hàm tính tổng số lượng sản phẩm đã bán của một loại sản phẩm cụ thể trong một khoảng thời gian nhất định:
 CREATE FUNCTION CalculateTotalSoldQuantity(
     @beverageName NVARCHAR(50),
-    @startDate DATE,
-    @endDate DATE
+    @size NVARCHAR(50),
+    @startDate DATE = NULL,
+    @endDate DATE = NULL
 )
 RETURNS INT
 AS
 BEGIN
     DECLARE @totalSoldQuantity INT = 0;
+    DECLARE @calcStartDate DATE;
+    DECLARE @calcEndDate DATE;
+
+    -- Calculate start date if NULL
+    IF @startDate IS NULL
+        SET @calcStartDate = '1900-01-01'; -- Or any other appropriate start date
+    ELSE
+        SET @calcStartDate = @startDate;
+
+    -- Calculate end date if NULL
+    IF @endDate IS NULL
+        SET @calcEndDate = GETDATE();
+    ELSE
+        SET @calcEndDate = @endDate;
+
 
     -- Sử dụng con trỏ để lặp qua các đơn hàng đã bán
     DECLARE invoiceCursor CURSOR FOR
@@ -768,8 +826,8 @@ BEGIN
     FROM [sale_invoice] si
     INNER JOIN [order] o ON si.[order_id] = o.[id]
     INNER JOIN [size_order] so ON so.[order_id] = o.[id]
-    WHERE so.[beverage_name] = @beverageName
-    AND si.[date] BETWEEN @startDate AND @endDate;
+    WHERE so.[beverage_name] = @beverageName AND so.[size] = @size
+    AND si.[date] BETWEEN @calcStartDate AND @calcEndDate;
 
     DECLARE @invoiceId INT;
 
@@ -785,7 +843,8 @@ BEGIN
         SELECT @orderQuantity = SUM(quantity)
         FROM [size_order]
         WHERE [order_id] = @invoiceId
-        AND [beverage_name] = @beverageName;
+        AND [beverage_name] = @beverageName
+        AND [size] = @size;
 
         -- Cộng số lượng sản phẩm của đơn hàng vào tổng số lượng đã bán
         SET @totalSoldQuantity = @totalSoldQuantity + @orderQuantity;
@@ -1278,23 +1337,23 @@ VALUES (0, N'Khách vãng lai', NULL, NULL);
 -- Disable identity insert
 SET IDENTITY_INSERT [customer] OFF;
 
-INSERT INTO [customer]  ([name], [phone_number], [date_of_birth])
+INSERT INTO [customer]  ([name], [phone_number], [date_of_birth],[bonus_point])
 VALUES
-(N'Nguyễn Văn An', '0987654321', '1990-05-15'),
-(N'Trần Thị Bình', '0987654322', '1992-07-20'),
-(N'Phạm Văn Cường', '0987654323', '1995-10-10'),
-(N'Lê Thị Dung', '0987654324', '1998-12-25'),
-(N'Vũ Thị Hương', '0987654325', '2000-03-05'),
-(N'Dương Văn Điệp', '0987654326', '2002-06-15'),
-(N'Nguyễn Thị Ly', '0987654327', '2005-09-20'),
-(N'Trần Hữu Nam', '0987654328', '2008-11-30'),
-(N'Hoàng Thị Hằng', '0987654329', '2010-04-10'),
-(N'Đặng Văn Thu', '0987654330', '2012-08-25'),
-(N'Lý Thị Mỹ', '0987654331', '2014-01-05'),
-(N'Ngô Hữu Quân', '0987654332', '2016-05-20'),
-(N'Ma Thị Hoa', '0987654333', '2018-07-15'),
-(N'Lê Văn An', '0987654334', '2020-09-30'),
-(N'Phan Hữu Hoàng', '0987654335', '2022-03-10');
+(N'Nguyễn Văn An', '0987654321', '1990-05-15',1),
+(N'Trần Thị Bình', '0987654322', '1992-07-20',3),
+(N'Phạm Văn Cường', '0987654323', '1995-10-10',4),
+(N'Lê Thị Dung', '0987654324', '1998-12-25',1),
+(N'Vũ Thị Hương', '0987654325', '2000-03-05',0),
+(N'Dương Văn Điệp', '0987654326', '2002-06-15',6),
+(N'Nguyễn Thị Ly', '0987654327', '2005-09-20',3),
+(N'Trần Hữu Nam', '0987654328', '2008-11-30',5),
+(N'Hoàng Thị Hằng', '0987654329', '2010-04-10',6),
+(N'Đặng Văn Thu', '0987654330', '2012-08-25',5),
+(N'Lý Thị Mỹ', '0987654331', '2014-01-05',4),
+(N'Ngô Hữu Quân', '0987654332', '2016-05-20',4),
+(N'Ma Thị Hoa', '0987654333', '2018-07-15',3),
+(N'Lê Văn An', '0987654334', '2020-09-30',7),
+(N'Phan Hữu Hoàng', '0987654335', '2022-03-10',1);
 
 
 INSERT INTO [promotion] ([promotion_name], [start_date], [end_date], [discount_type], [discount_value])
@@ -1386,7 +1445,7 @@ VALUES
 (N'Nhỏ', 3, 3, N'Sinh tố mận'),
 (N'Lớn', 2, 4, N'Nước dừa'),
 (N'Lớn', 1, 4, N'Sinh tố thập cẩm'),
-(N'Vừa', 1, 5, N'Nước chanh'),
+(N'Vừa', 7, 5, N'Nước chanh'),
 (N'Vừa', 3, 6, N'Nước ép lựu'),
 (N'Nhỏ', 5, 7, N'Sinh tố bơ'),
 (N'Nhỏ', 3, 8, N'Sinh tố chuối'),
@@ -1401,31 +1460,86 @@ VALUES
 (N'Vừa', 4, 16, N'Sinh tố dâu'),
 (N'Nhỏ', 5, 17, N'Nước cam'),
 (N'Lớn', 6, 18, N'Nước dừa'),
-(N'Vừa', 1, 19, N'Nước chanh'),
+(N'Vừa', 5, 19, N'Nước chanh'),
 (N'Nhỏ', 2, 20, N'Cà phê sữa');
 
 
 INSERT INTO [sale_invoice] ([date], [time], [payment_method], [order_id])
 VALUES
-(N'2022-05-01', '08:00:00', N'Tiền mặt', 1),
-(N'2022-05-02', '09:00:00', N'Tiền mặt', 2),
-(N'2022-05-03', '10:00:00', N'Chuyển khoản', 3),
-(N'2022-05-04', '11:00:00', N'Chuyển khoản', 4),
-(N'2022-05-05', '12:00:00', N'Tiền mặt', 5),
-(N'2022-05-06', '13:00:00', N'Tiền mặt', 6),
-(N'2022-05-07', '14:00:00', N'Chuyển khoản', 7),
-(N'2022-05-08', '15:00:00', N'Chuyển khoản', 8),
-(N'2022-05-09', '16:00:00', N'Tiền mặt', 9),
-(N'2022-05-10', '17:00:00', N'Tiền mặt', 10),
-(N'2022-05-11', '18:00:00', N'Chuyển khoản', 11),
-(N'2022-05-12', '19:00:00', N'Chuyển khoản', 12),
-(N'2022-05-12', '20:00:00', N'Tiền mặt', 13),
-(N'2022-05-12', '21:00:00', N'Tiền mặt', 14),
-(N'2022-05-12', '22:00:00', N'Chuyển khoản', 15),
-(N'2022-05-12', '23:00:00', N'Chuyển khoản', 16),
-(N'2022-05-15', '08:00:00', N'Tiền mặt', 17),
-(N'2022-05-15', '09:00:00', N'Tiền mặt', 18),
-(N'2022-05-15', '10:00:00', N'Chuyển khoản', 19),
-(N'2022-05-15', '11:00:00', N'Chuyển khoản', 20);
+(N'2024-05-01', '08:00:00', N'Tiền mặt', 1),
+(N'2024-05-02', '09:00:00', N'Tiền mặt', 2),
+(N'2024-05-03', '10:00:00', N'Chuyển khoản', 3),
+(N'2024-05-04', '11:00:00', N'Chuyển khoản', 4),
+(N'2024-05-05', '12:00:00', N'Tiền mặt', 5),
+(N'2024-05-06', '13:00:00', N'Tiền mặt', 6),
+(N'2024-05-07', '14:00:00', N'Chuyển khoản', 7),
+(N'2024-05-08', '15:00:00', N'Chuyển khoản', 8),
+(N'2024-05-09', '16:00:00', N'Tiền mặt', 9),
+(N'2024-05-10', '17:00:00', N'Tiền mặt', 10),
+(N'2024-05-11', '18:00:00', N'Chuyển khoản', 11),
+(N'2024-05-12', '19:00:00', N'Chuyển khoản', 12),
+(N'2024-05-12', '20:00:00', N'Tiền mặt', 13),
+(N'2024-05-12', '21:00:00', N'Tiền mặt', 14),
+(N'2024-05-12', '22:00:00', N'Chuyển khoản', 15),
+(N'2024-05-12', '23:00:00', N'Chuyển khoản', 16),
+(N'2024-05-15', '08:00:00', N'Tiền mặt', 17),
+(N'2024-05-15', '09:00:00', N'Tiền mặt', 18),
+(N'2024-05-15', '10:00:00', N'Chuyển khoản', 19),
+(N'2024-05-15', '11:00:00', N'Chuyển khoản', 20);
+
+
+INSERT INTO [table] ([id], [number_seat])
+VALUES
+(1, 4),
+(2, 6),
+(3, 5),
+(4, 4),
+(5, 6),
+(6, 2),
+(7, 4),
+(8, 6),
+(9, 4),
+(10, 3),
+(11, 5),
+(12, 3),
+(13, 2),
+(14, 5),
+(15, 6);
+
+
+INSERT INTO [order_table]([order_id], [table_id])
+VALUES
+(1,1),
+(3,2),
+(5,3),
+(7,4),
+(9,5),
+(11,6),
+(13,7),
+(15,8),
+(17,9),
+(19,10);
+
+INSERT INTO [delivery_service] ([name])
+VALUES
+(N'Giao hàng nhanh'),
+(N'Shoppe'),
+(N'Grab'),
+(N'Now'),
+(N'Giao hàng tiết kiệm'),
+(N'Be');
+
+INSERT INTO [delivery_service_order] ([tracking_code], [order_id], [delivery_service_id])
+VALUES
+(N'GH001', 2, 1),
+(N'SH001', 4, 2),
+(N'GR001', 6, 3),
+(N'NO001', 8, 4),
+(N'GHTK001', 10, 5),
+(N'BE001', 12, 6),
+(N'GH002', 14, 1),
+(N'SH002', 16, 2),
+(N'GR002', 18, 3),
+(N'NO002', 20, 4);
 
 

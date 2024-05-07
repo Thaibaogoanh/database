@@ -4,6 +4,10 @@ exports.getImage = async (req, res) => {
   return await Product.getImage(req, res);
 };
 
-exports.findByFilter = async (req, res) => {
-  return await Product.findByFilter(req, res);
+exports.findAll = async (req, res) => {
+  return await Product.findAll(req, res);
 };
+
+exports.countSold = async (req, res) => {
+  return await Product.countSold(req, res);
+}

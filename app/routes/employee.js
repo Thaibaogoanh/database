@@ -7,7 +7,7 @@ module.exports = (app) => {
   // Create a new employee
   router.post("/", uploadEmployee.single("image"), employee.create);
 
-  // Fitler employees with job type
+  // Fitler employees
   router.get("/", employee.findByFilter);
 
   // Get employees image

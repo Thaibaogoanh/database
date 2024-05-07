@@ -4,46 +4,99 @@ const path = require("path");
 const _ = require("lodash");
 
 const Product = {
-  findByFilter: async (req, res) => {
+  
+  countSold: async (req, res) => {
+    return 0;
+  },
+
+  findAll: async (req, res) => {
     try {
-      const { jobType, gender, phoneNumber, dob } = req.query;
-      const page = parseInt(req.query.page) || 1;
-      const perPage = parseInt(req.query.perPage) || 10;
+      const { start, end } = req.query;
+
+      let startDate = null;
+      let endDate = null;
+      if (start) {
+        startDate = new Date(start);
+      }
+      if (end) {
+        endDate = new Date(end);
+      }
+
       const pool = await connectDB();
-
       const request = pool.request();
-      request.input("page", sql.Int, page).input("per_page", sql.Int, perPage);
 
-      if (jobType) {
-        request.input("job_type", sql.NVarChar, jobType);
-      }
-      if (gender) {
-        request.input("gender", sql.NVarChar, gender);
-      }
-      if (phoneNumber) {
-        request.input("phone_number", sql.NVarChar, phoneNumber);
-      }
-      if (dob) {
-        request.input("date_of_birth", sql.Date, dob);
-      }
+      const [beverageResult] = await Promise.all([
+        request.query(
+          `SELECT * 
+            FROM beverage
+           `
+        ),
+      ]);
 
-      request.output("total_count", sql.Int);
+      const beverageData = beverageResult.recordset;
 
-      const result = await request.execute("dbo.proc_GetEmployeeByFilter");
+      const sizePromises = beverageData.map((beverage, index) => {
+        const paramName = `beverage_name_${index}`;
+        return request.input(paramName, beverage.beverage_name).query(
+          `SELECT size, price
+           FROM size
+           WHERE beverage_name = @${paramName}`
+        );
+      });
 
-      const total = result.output.total_count;
+      const sizeResults = await Promise.all(sizePromises);
 
-      let data = [];
-      const resultMap = new Map();
+      let data = beverageData.map((beverage, index) => {
+        const sizes = sizeResults[index].recordset;
+        return {
+          ...beverage,
+          sizes,
+        };
+      });
 
-      result.recordset.forEach(({ ssn, phone_number, ...rest }) => {
-        let existEmployee = resultMap.get(ssn);
-        if (!existEmployee) {
-          existEmployee = { ssn, ...rest, phone_numbers: [] };
-          resultMap.set(ssn, existEmployee);
-          data.push(_.omit(existEmployee, ["created_at", "updated_at"]));
-        }
-        existEmployee.phone_numbers.push(phone_number);
+      const totalSoldQuantityPromises = data.flatMap((beverage, i) =>
+        beverage.sizes.map((size, j) => {
+          return new Promise((resolve, reject) => {
+            request
+              .input(`beverageName_${i}_${j}`, beverage.beverage_name)
+              .input(`size_${i}_${j}`, size.size)
+              .input(`startDate_${i}_${j}`, startDate)
+              .input(`endDate_${i}_${j}`, endDate)
+              .query(
+                `
+              DECLARE @totalQuantity_${i}_${j} INT;
+              SET @totalQuantity_${i}_${j} = dbo.CalculateTotalSoldQuantity(@beverageName_${i}_${j}, @size_${i}_${j}, @startDate_${i}_${j}, @endDate_${i}_${j});
+              SELECT @totalQuantity_${i}_${j} AS TotalSoldQuantity;
+            `,
+                (err, result) => {
+                  if (err) {
+                    reject(err);
+                  } else {
+                    resolve(result.recordset[0].TotalSoldQuantity);
+                  }
+                }
+              );
+          });
+        })
+      );
+
+      const totalSoldQuantities = await Promise.allSettled(
+        totalSoldQuantityPromises
+      );
+
+      data = data.map((beverage, i) => {
+        const sizes = beverage.sizes.map((size, j) => {
+          return {
+            ...size,
+            sold_quantity:
+              totalSoldQuantities[i * beverage.sizes.length + j].value,
+          };
+        });
+
+        return {
+          ...beverage,
+          sizes,
+        };
       });
 
       const timestamp = new Date().toISOString();
@@ -55,11 +108,6 @@ const Product = {
         status: 200,
         message: "Success",
         data,
-        total: total,
-        page: page,
-        perPage: perPage,
-        perCurrentPage: data.length,
-        totalPage: Math.ceil(total / perPage),
       });
     } catch (error) {
       return res.status(500).json({

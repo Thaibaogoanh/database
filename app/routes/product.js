@@ -4,10 +4,13 @@ module.exports = (app) => {
   const express = require("express");
   const router = express.Router();
 
-  // Fitler employees with job type
-//   router.get("/", products.findByFilter);
+  // Get quantity of sold products
+  router.get("/:productName", product.countSold);
 
-  // Get employees image
+  // Get products 
+  router.get("/", product.findAll);
+
+  // Get products image
   router.get("/images/:imageName", product.getImage);
 
   app.use("/api/v1/products", router);
