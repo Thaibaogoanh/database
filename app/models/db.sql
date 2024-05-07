@@ -54,9 +54,10 @@ IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'full_time_employee')
 BEGIN
     CREATE TABLE [full_time_employee] (
       [ssn] INT NOT NULL,
-      [insurance] VARCHAR(50) NOT NULL,
+      [insurance] VARCHAR(50) NOT NULL ,
       [month_salary] DECIMAL(10,2) NOT NULL,
       PRIMARY KEY ([ssn]),
+      UNIQUE ([insurance]),
       CONSTRAINT [fk_ft_emp] FOREIGN KEY ([ssn]) REFERENCES [employee] ([ssn]) ON DELETE CASCADE
     );
 END;
@@ -275,7 +276,7 @@ BEGIN
       [time] TIME NOT NULL,
       [payment_method] NVARCHAR(50) NOT NULL CHECK (payment_method IN (N'Tiền mặt', N'Chuyển khoản')),
       [order_id] INT NOT NULL,
-      [total_price] DECIMAL(10,2) NULL,
+      [total_price] DECIMAL(18, 2) NULL,
       PRIMARY KEY ([id]),
       CONSTRAINT [fk_sale_invoice_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id]) ON DELETE CASCADE
     );
@@ -632,47 +633,70 @@ GO
 
 -- Trigger tính tổng tiền trong hóa đơn và tích điểm cho khách hàng:
 
--- CREATE TRIGGER Calculate_TotalPrice
--- ON Hoa_don
--- AFTER INSERT
--- AS
--- BEGIN
+IF OBJECT_ID('dbo.Calculate_TotalPrice', 'TR') IS NOT NULL
+    DROP TRIGGER dbo.Calculate_TotalPrice;
+GO
 
---     -- Khai báo biến
---     DECLARE @ma_hd INT;
---     DECLARE @ma_dh INT;
---     DECLARE @ma_kh VARCHAR(20);
---     DECLARE @tong_tien_thanh_toan DECIMAL(18, 2);
---     DECLARE @diem_tich_luy INT;
+CREATE TRIGGER Calculate_TotalPrice
+ON dbo.sale_invoice
+AFTER INSERT
+AS
+BEGIN
 
---     -- Lấy mã hóa đơn và mã đơn hàng từ bảng vừa chèn
---     SELECT @ma_hd = ma_hd, @ma_dh = ma_dh FROM INSERTED;
+    -- Khai báo biến
+    DECLARE @ma_hd INT;
+    DECLARE @ma_dh INT;
+    DECLARE @ma_kh INT;
+    DECLARE @tong_tien_thanh_toan DECIMAL(18, 2);
+    DECLARE @diem_tich_luy INT;
 
---     -- Lấy mã khách hàng từ bảng Đơn hàng
---     SELECT @ma_kh = ma_kh FROM Don_hang WHERE ma_dh = @ma_dh;
+    -- Declare cursor
+    DECLARE invoice_cursor CURSOR FOR
+    SELECT id, order_id
+    FROM INSERTED;
 
---     -- Tính toán tổng tiền thanh toán và lưu vào biến từ các mục trong bảng Nam_trong
---     SELECT @tong_tien_thanh_toan = ISNULL(SUM(tong_tien), 0) FROM Nam_trong WHERE ma_hd = @ma_hd;
+    -- Open the cursor
+    OPEN invoice_cursor;
 
---     -- Cập nhật tổng tiền thanh toán trong bảng hóa đơn
---     UPDATE Hoa_don
---     SET tong_tien_thanh_toan = @tong_tien_thanh_toan
---     WHERE ma_hd = @ma_hd;
+    -- Fetch the first row
+    FETCH NEXT FROM invoice_cursor INTO @ma_hd, @ma_dh;
 
---     -- Cập nhật điểm tích lũy chỉ cho khách hàng thành viên (không phải mã mặc định)
---     IF @ma_kh <> '00000000'
---     BEGIN
---         -- Tính toán điểm tích lũy dựa trên tổng tiền (giả sử 1 điểm cho mỗi 10000 đồng chi tiêu)
---         SET @diem_tich_luy = @tong_tien_thanh_toan / 10000;
+    -- Loop through all inserted rows
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        -- Lấy mã khách hàng từ bảng Đơn hàng
+        SELECT @ma_kh = customer_id FROM [order] WHERE id = @ma_dh;
 
---         UPDATE Khach_hang
---         SET diem_tich_luy = diem_tich_luy + @diem_tich_luy
---         WHERE ma_kh = @ma_kh;
---     END
--- END;
--- GO
+        -- Tính toán tổng tiền thanh toán
+        SELECT @tong_tien_thanh_toan = SUM(total_price)
+        FROM size_order
+        WHERE order_id = @ma_dh;
 
+        -- Cập nhật tổng tiền thanh toán trong bảng hóa đơn
+        UPDATE sale_invoice
+        SET total_price = @tong_tien_thanh_toan
+        WHERE id = @ma_hd;
 
+        -- Cập nhật điểm tích lũy chỉ cho khách hàng thành viên (không phải mã mặc định)
+        IF @ma_kh <> 0
+        BEGIN
+            -- Tính toán điểm tích lũy dựa trên tổng tiền (giả sử 1 điểm cho mỗi 10000 đồng chi tiêu)
+            SET @diem_tich_luy = @tong_tien_thanh_toan / 10000;
+
+            UPDATE customer
+            SET bonus_point = bonus_point + @diem_tich_luy
+            WHERE id = @ma_kh;
+        END
+
+        -- Fetch the next row
+        FETCH NEXT FROM invoice_cursor INTO @ma_hd, @ma_dh;
+    END
+
+    -- Close and deallocate the cursor
+    CLOSE invoice_cursor;
+    DEALLOCATE invoice_cursor;
+END;
+GO
 
 
 
@@ -809,7 +833,7 @@ BEGIN
 
     -- Calculate start date if NULL
     IF @startDate IS NULL
-        SET @calcStartDate = '1900-01-01'; -- Or any other appropriate start date
+        SET @calcStartDate = '1900-01-01';
     ELSE
         SET @calcStartDate = @startDate;
 
@@ -861,58 +885,62 @@ END;
 GO
 
 -- Hàm kiểm tra xem có đủ nguyên vật liệu còn lại để làm sản phẩm cần thiết không
-CREATE FUNCTION dbo.CheckMaterialAvailability (
-    @ProductID INT
+IF OBJECT_ID('dbo.CheckItemInStoreAvailability', 'FN') IS NOT NULL
+    DROP FUNCTION dbo.CheckItemInStoreAvailability;
+GO
+
+CREATE FUNCTION dbo.CheckItemInStoreAvailability (
+    @beverage_name NVARCHAR(50)
 )
 RETURNS BIT
 AS
 BEGIN
     DECLARE @MaterialsNeeded TABLE (
-        MaterialID INT,
-        QuantityNeeded INT
+        product_name NVARCHAR(50),
+        quantity INT
     );
 
     -- Retrieve information about the materials needed to produce the product
-    INSERT INTO @MaterialsNeeded (MaterialID, QuantityNeeded)
-    SELECT MaterialID, QuantityNeeded
-    FROM ProductMaterials
-    WHERE ProductID = @ProductID;
+    INSERT INTO @MaterialsNeeded (product_name, quantity)
+    SELECT product_name, quantity
+    FROM size_item_in_store
+    WHERE beverage_name = @beverage_name;
 
-    DECLARE @MaterialID INT;
-    DECLARE @QuantityNeeded INT;
+    DECLARE @product_name NVARCHAR(50);
+    DECLARE @quantity INT;
     DECLARE @AvailableQuantity INT;
 
     DECLARE MaterialCursor CURSOR FOR
-    SELECT MaterialID, QuantityNeeded
+    SELECT product_name, quantity
     FROM @MaterialsNeeded;
 
     OPEN MaterialCursor;
-    FETCH NEXT FROM MaterialCursor INTO @MaterialID, @QuantityNeeded;
+    FETCH NEXT FROM MaterialCursor INTO @product_name, @quantity;
 
     -- Check the availability of sufficient materials
     WHILE @@FETCH_STATUS = 0
     BEGIN
         -- Retrieve the remaining quantity of the material in stock
-        SELECT @AvailableQuantity = Quantity
-        FROM Materials
-        WHERE MaterialID = @MaterialID;
+        SELECT @AvailableQuantity = remaining_quantity
+        FROM item_in_store
+        WHERE product_name = @product_name;
 
-        -- If the remaining quantity is not enough, return 0
-        IF @AvailableQuantity < @QuantityNeeded
+        -- If the remaining quantity is enough, return 1
+        IF @AvailableQuantity >= @quantity
         BEGIN
             CLOSE MaterialCursor;
             DEALLOCATE MaterialCursor;
-            RETURN 0;
+            RETURN 1;
         END;
 
-        FETCH NEXT FROM MaterialCursor INTO @MaterialID, @QuantityNeeded;
+        FETCH NEXT FROM MaterialCursor INTO @product_name, @quantity;
     END;
 
     CLOSE MaterialCursor;
     DEALLOCATE MaterialCursor;
 
-    -- If there are enough materials, return 1
-    RETURN 1;
+    -- If there are not enough materials, return 0
+    RETURN 0;
 END;
 GO
 
@@ -978,13 +1006,13 @@ VALUES
 (3, '345678901', 8000000),
 (9, '901234567', 7000000),
 (10, '012345678', 7500000),
-(11, '123456789', 8000000),
-(12, '234567890', 6000000),
-(13, '345678901', 10000000),
+(11, '123416789', 8000000),
+(12, '234467890', 6000000),
+(13, '342678901', 10000000),
 (15, '567890123', 9000000),
 (17, '789012345', 9000000),
 (18, '890123456', 7000000),
-(19, '901234567', 7000000);
+(19, '901334567', 7000000);
 
 
 INSERT INTO [part_time_employee] ([ssn], [hourly_salary])
@@ -1165,25 +1193,25 @@ VALUES
 
 INSERT INTO [item_in_store] ([product_name], [unit], [remaining_quantity], [supplier_invoice_id])
 VALUES
-(N'Cam', 'kg', 70, 1),
-(N'Dừa', N'quả', 180, 2),
-(N'Chuối', 'kg', 120, 3),
-(N'Dâu', 'kg', 250, 4),
-(N'Xoài', 'kg', 100, 5),
-(N'Dưa hấu', 'kg', 150, 6),
-(N'Lê', 'kg', 200, 7),
-(N'Nho', 'kg', 190, 8),
-(N'Dừa nước', 'kg', 80, 9),
-(N'Lựu', 'kg', 150, 10),
-(N'Bơ', 'kg', 200, 11),
-(N'Dưa lưới', 'kg', 60, 13),
-(N'Chanh', 'kg', 100, 14),
-(N'Táo', 'kg', 250, 15),
-(N'Dừa xiêm', N'quả', 100, 16),
-(N'Nho khô', 'kg', 150, 17),
-(N'Mơ', 'kg', 200, 18),
-(N'Mận', 'kg', 100, 19),
-(N'Cà phê', 'kg', 20, 20);
+(N'Cam', 'kg', 50, 1),
+(N'Dừa', N'quả', 60, 2),
+(N'Chuối', 'kg', 40, 3),
+(N'Dâu', 'kg', 35, 4),
+(N'Xoài', 'kg', 50, 5),
+(N'Dưa hấu', 'kg', 47, 6),
+(N'Lê', 'kg', 10, 7),
+(N'Nho', 'kg', 45, 8),
+(N'Dừa nước', 'kg', 64, 9),
+(N'Lựu', 'kg', 38, 10),
+(N'Bơ', 'kg', 100, 11),
+(N'Dưa lưới', 'kg', 58, 13),
+(N'Chanh', 'kg', 20, 14),
+(N'Táo', 'kg', 70, 15),
+(N'Dừa xiêm', N'quả', 60, 16),
+(N'Nho khô', 'kg', 57, 17),
+(N'Mơ', 'kg', 55, 18),
+(N'Mận', 'kg', 65, 19),
+(N'Cà phê', 'kg', 48, 20);
 
 
 INSERT INTO [beverage] ([beverage_name], [image_url])
@@ -1275,57 +1303,60 @@ VALUES
 
 INSERT INTO [size_item_in_store] ([product_name], [size], [quantity], [beverage_name])
 VALUES
-(N'Cam', N'Lớn', 40, N'Nước cam'),
-(N'Cam', N'Vừa', 30, N'Nước cam'),
-(N'Cam', N'Nhỏ', 20, N'Nước cam'),
-(N'Dừa', N'Lớn', 100, N'Nước dừa'),
-(N'Dừa', N'Vừa', 50, N'Nước dừa'),
-(N'Dừa', N'Nhỏ', 30, N'Nước dừa'),
-(N'Chuối', N'Lớn', 70, N'Sinh tố chuối'),
-(N'Chuối', N'Vừa', 30, N'Sinh tố chuối'),
-(N'Chuối', N'Nhỏ', 20, N'Sinh tố chuối'),
-(N'Dâu', N'Lớn', 150, N'Sinh tố dâu'),
-(N'Dâu', N'Vừa', 50, N'Sinh tố dâu'),
-(N'Dâu', N'Nhỏ', 50, N'Sinh tố dâu'),
-(N'Xoài', N'Lớn', 50, N'Sinh tố xoài'),
-(N'Xoài', N'Vừa', 30, N'Sinh tố xoài'),
-(N'Xoài', N'Nhỏ', 20, N'Sinh tố xoài'),
-(N'Dưa hấu', N'Lớn', 100, N'Nước ép dưa hấu'),
-(N'Dưa hấu', N'Vừa', 50, N'Nước ép dưa hấu'),
-(N'Dưa hấu', N'Nhỏ', 30, N'Nước ép dưa hấu'),
-(N'Lê', N'Lớn', 120, N'Nước ép lê'),
-(N'Lê', N'Vừa', 50, N'Nước ép lê'),
-(N'Lê', N'Nhỏ', 30, N'Nước ép lê'),
-(N'Nho', N'Lớn', 100, N'Sinh tố nho'),
-(N'Nho', N'Vừa', 50, N'Sinh tố nho'),
-(N'Nho', N'Nhỏ', 40, N'Sinh tố nho'),
-(N'Dừa nước', N'Lớn', 40, N'Nước dừa'),
-(N'Dừa nước', N'Vừa', 30, N'Nước dừa'),
-(N'Dừa nước', N'Nhỏ', 10, N'Nước dừa'),
-(N'Lựu', N'Lớn', 70, N'Nước ép lựu'),
-(N'Lựu', N'Vừa', 30, N'Nước ép lựu'),
-(N'Lựu', N'Nhỏ', 20, N'Nước ép lựu'),
-(N'Bơ', N'Lớn', 100, N'Sinh tố bơ'),
-(N'Bơ', N'Vừa', 50, N'Sinh tố bơ'),
-(N'Bơ', N'Nhỏ', 30, N'Sinh tố bơ'),
-(N'Chanh', N'Lớn', 70, N'Nước chanh'),
-(N'Chanh', N'Vừa', 30, N'Nước chanh'),
-(N'Chanh', N'Nhỏ', 20, N'Nước chanh'),
-(N'Táo', N'Lớn', 100, N'Nước ép táo'),
-(N'Táo', N'Vừa', 50, N'Nước ép táo'),
-(N'Táo', N'Nhỏ', 30, N'Nước ép táo'),
-(N'Dừa xiêm', N'Lớn', 40, N'Sinh tố dừa xiêm'),
-(N'Dừa xiêm', N'Vừa', 30, N'Sinh tố dừa xiêm'),
-(N'Dừa xiêm', N'Nhỏ', 20, N'Sinh tố dừa xiêm'),
-(N'Mơ', N'Lớn', 100, N'Nước ép mơ'),
-(N'Mơ', N'Vừa', 50, N'Nước ép mơ'),
-(N'Mơ', N'Nhỏ', 30, N'Nước ép mơ'),
-(N'Mận', N'Lớn', 70, N'Sinh tố mận'),
-(N'Mận', N'Vừa', 30, N'Sinh tố mận'),
-(N'Mận', N'Nhỏ', 20, N'Sinh tố mận'),
-(N'Cà phê', N'Lớn', 40, N'Cà phê sữa'),
-(N'Cà phê', N'Vừa', 30, N'Cà phê sữa'),
-(N'Cà phê', N'Nhỏ', 20, N'Cà phê sữa');
+(N'Cam', N'Lớn', 5, N'Nước cam'),
+(N'Cam', N'Vừa', 3, N'Nước cam'),
+(N'Cam', N'Nhỏ', 2, N'Nước cam'),
+(N'Dừa', N'Lớn', 5, N'Nước dừa'),
+(N'Dừa', N'Vừa', 3, N'Nước dừa'),
+(N'Dừa', N'Nhỏ', 2, N'Nước dừa'),
+(N'Chuối', N'Lớn', 3, N'Sinh tố chuối'),
+(N'Chuối', N'Vừa', 2, N'Sinh tố chuối'),
+(N'Chuối', N'Nhỏ', 1, N'Sinh tố chuối'),
+(N'Dâu', N'Lớn', 3, N'Sinh tố dâu'),
+(N'Dâu', N'Vừa', 2, N'Sinh tố dâu'),
+(N'Dâu', N'Nhỏ', 1, N'Sinh tố dâu'),
+(N'Xoài', N'Lớn', 4, N'Sinh tố xoài'),
+(N'Xoài', N'Vừa', 2, N'Sinh tố xoài'),
+(N'Xoài', N'Nhỏ', 1, N'Sinh tố xoài'),
+(N'Dưa hấu', N'Lớn', 5, N'Nước ép dưa hấu'),
+(N'Dưa hấu', N'Vừa', 4, N'Nước ép dưa hấu'),
+(N'Dưa hấu', N'Nhỏ', 3, N'Nước ép dưa hấu'),
+(N'Lê', N'Lớn', 5, N'Nước ép lê'),
+(N'Lê', N'Vừa', 3, N'Nước ép lê'),
+(N'Lê', N'Nhỏ', 2, N'Nước ép lê'),
+(N'Nho', N'Lớn', 3, N'Sinh tố nho'),
+(N'Nho', N'Vừa', 2, N'Sinh tố nho'),
+(N'Nho', N'Nhỏ', 1, N'Sinh tố nho'),
+(N'Dừa nước', N'Lớn', 5, N'Nước dừa'),
+(N'Dừa nước', N'Vừa', 4, N'Nước dừa'),
+(N'Dừa nước', N'Nhỏ', 3, N'Nước dừa'),
+(N'Lựu', N'Lớn', 5, N'Nước ép lựu'),
+(N'Lựu', N'Vừa', 3, N'Nước ép lựu'),
+(N'Lựu', N'Nhỏ', 2, N'Nước ép lựu'),
+(N'Bơ', N'Lớn', 5, N'Sinh tố bơ'),
+(N'Bơ', N'Vừa', 3, N'Sinh tố bơ'),
+(N'Bơ', N'Nhỏ', 2, N'Sinh tố bơ'),
+(N'Chanh', N'Lớn', 3, N'Nước chanh'),
+(N'Chanh', N'Vừa', 2, N'Nước chanh'),
+(N'Chanh', N'Nhỏ', 1, N'Nước chanh'),
+(N'Táo', N'Lớn', 5, N'Nước ép táo'),
+(N'Táo', N'Vừa', 3, N'Nước ép táo'),
+(N'Táo', N'Nhỏ', 2, N'Nước ép táo'),
+(N'Dừa xiêm', N'Lớn', 5, N'Sinh tố dừa xiêm'),
+(N'Dừa xiêm', N'Vừa', 4, N'Sinh tố dừa xiêm'),
+(N'Dừa xiêm', N'Nhỏ', 3, N'Sinh tố dừa xiêm'),
+(N'Mơ', N'Lớn', 5, N'Nước ép mơ'),
+(N'Mơ', N'Vừa', 3, N'Nước ép mơ'),
+(N'Mơ', N'Nhỏ', 2, N'Nước ép mơ'),
+(N'Mận', N'Lớn', 3, N'Sinh tố mận'),
+(N'Mận', N'Vừa', 2, N'Sinh tố mận'),
+(N'Mận', N'Nhỏ', 1, N'Sinh tố mận'),
+(N'Cà phê', N'Lớn', 4, N'Cà phê sữa'),
+(N'Cà phê', N'Vừa', 3, N'Cà phê sữa'),
+(N'Cà phê', N'Nhỏ', 2, N'Cà phê sữa'),
+(N'Cà phê', N'Lớn', 3, N'Cà phê đen'),
+(N'Cà phê', N'Vừa', 2, N'Cà phê đen'),
+(N'Cà phê', N'Nhỏ', 1, N'Cà phê đen');
 
 
 SET IDENTITY_INSERT [customer] ON;
@@ -1343,7 +1374,7 @@ VALUES
 (N'Trần Thị Bình', '0987654322', '1992-07-20',3),
 (N'Phạm Văn Cường', '0987654323', '1995-10-10',4),
 (N'Lê Thị Dung', '0987654324', '1998-12-25',1),
-(N'Vũ Thị Hương', '0987654325', '2000-03-05',0),
+(N'Vũ Thị Hương', '0987654325', '2000-03-05',10),
 (N'Dương Văn Điệp', '0987654326', '2002-06-15',6),
 (N'Nguyễn Thị Ly', '0987654327', '2005-09-20',3),
 (N'Trần Hữu Nam', '0987654328', '2008-11-30',5),
