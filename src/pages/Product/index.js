@@ -26,7 +26,7 @@ import InputBase from '@mui/material/InputBase';
 import { LocalizationProvider } from '@mui/x-date-pickers-pro';
 import { AdapterDayjs } from '@mui/x-date-pickers-pro/AdapterDayjs';
 import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
-import { Box } from '@mui/material';
+import { Box, TextField } from '@mui/material';
 import { useState, useEffect, useMemo } from 'react';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
@@ -35,16 +35,25 @@ import axios from 'axios';
 function Products() {
   const API_URL = "http://localhost:5000/api/v1/products";
   const [productData, setProductData] = useState([]);
-  const [order, setOrder] = React.useState('asc');
-  const [orderBy, setOrderBy] = React.useState('calories');
-  const [selected, setSelected] = React.useState([]);
-  const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(5);
+  const [order, setOrder] = useState('asc');
+  const [orderBy, setOrderBy] = useState('calories');
+  const [selected, setSelected] = useState([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [dateRange, setDateRange] = useState([null, null]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get(API_URL);
+        let response;
+        if( dateRange[0] === null || dateRange[1] === null){
+          response = await axios.get(API_URL);
+        } else {
+          const startDate = dateRange[0].format('YYYY-MM-DD');
+          const endDate = dateRange[1].format('YYYY-MM-DD');
+          response = await axios.get(`${API_URL}?start=${startDate}&end=${endDate}`);
+        }
+        
         setProductData(response.data.data);
       } catch (err) {
         console.error("Failed to fetch products:", err);
@@ -52,7 +61,7 @@ function Products() {
     };
 
     fetchData();
-  }, []);
+  }, [dateRange]);
 
   // Define other state variables and functions as previously
 
@@ -99,7 +108,11 @@ function Products() {
     const createSortHandler = (property) => (event) => {
       onRequestSort(event, property);
     };
-
+    
+    function handleDateChange(newValue){
+      console.log(newValue);
+      setDateRange(newValue);
+    }
     return (
       <TableHead>
         <TableRow className={clsx(styles.headTable)}>
@@ -184,9 +197,19 @@ function Products() {
             </TableSortLabel>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
               <DateRangePicker
-                calendars={1} // Only show one calendar
+                  startText="Start"
+                  endText="End"
+                  value={dateRange}
+                  onChange={handleDateChange}
+                  renderInput={(startProps, endProps) => (
+                      <>
+                          <TextField {...startProps} />
+                          <TextField {...endProps} />
+                      </>
+                  )}
+                  calendars={1} // Show only one calendar
               />
-            </LocalizationProvider>
+          </LocalizationProvider>
           </TableCell>
           <TableCell
             align='center'
