@@ -27,12 +27,47 @@ import { LocalizationProvider } from '@mui/x-date-pickers-pro';
 import { AdapterDayjs } from '@mui/x-date-pickers-pro/AdapterDayjs';
 import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
 import { Box } from '@mui/material';
-import pd_data from './data';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
+import axios from 'axios';
 
 function Products() {
+  const API_URL = "http://localhost:5000/api/v1/products";
+  const [productData, setProductData] = useState([]);
+  const [order, setOrder] = React.useState('asc');
+  const [orderBy, setOrderBy] = React.useState('calories');
+  const [selected, setSelected] = React.useState([]);
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(5);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(API_URL);
+        setProductData(response.data.data);
+      } catch (err) {
+        console.error("Failed to fetch products:", err);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Define other state variables and functions as previously
+
+  // Updated visibleRows calculation using productData
+  function stableSort(array, comparator) {
+    const stabilizedThis = array.map((el, index) => [el, index]);
+    stabilizedThis.sort((a, b) => {
+      const order = comparator(a[0], b[0]);
+      if (order !== 0) {
+        return order;
+      }
+      return a[1] - b[1];
+    });
+    return stabilizedThis.map((el) => el[0]);
+  }
 
   function descendingComparator(a, b, orderBy) {
     if (b[orderBy] < a[orderBy]) {
@@ -50,17 +85,13 @@ function Products() {
       : (a, b) => -descendingComparator(a, b, orderBy);
   }
 
-  function stableSort(array, comparator) {
-    const stabilizedThis = array.map((el, index) => [el, index]);
-    stabilizedThis.sort((a, b) => {
-      const order = comparator(a[0], b[0]);
-      if (order !== 0) {
-        return order;
-      }
-      return a[1] - b[1];
-    });
-    return stabilizedThis.map((el) => el[0]);
-  }
+  const visibleRows = useMemo( () =>
+      stableSort(productData, getComparator(order, orderBy)).slice(
+        page * rowsPerPage,
+        page * rowsPerPage + rowsPerPage,
+      ),
+    [order, orderBy, page, rowsPerPage, productData],
+  );
 
   function EnhancedTableHead(props) {
     const { onSelectAllClick, order, orderBy, numSelected, rowCount, onRequestSort } =
@@ -251,12 +282,6 @@ function Products() {
     numSelected: PropTypes.number.isRequired,
   };
 
-  const [order, setOrder] = React.useState('asc');
-  const [orderBy, setOrderBy] = React.useState('calories');
-  const [selected, setSelected] = React.useState([]);
-  const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(5);
-
   const handleRequestSort = (event, property) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -265,7 +290,7 @@ function Products() {
 
   const handleSelectAllClick = (event) => {
     if (event.target.checked) {
-      const newSelected = pd_data.map((n) => n.beverage_name);
+      const newSelected = productData.map((n) => n.beverage_name);
       setSelected(newSelected);
       return;
     }
@@ -305,53 +330,43 @@ function Products() {
 
   // Avoid a layout jump when reaching the last page with empty rows.
   const emptyRows =
-    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - pd_data.length) : 0;
+    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - productData.length) : 0;
 
-  const visibleRows = React.useMemo(
-    () =>
-      stableSort(pd_data, getComparator(order, orderBy)).slice(
-        page * rowsPerPage,
-        page * rowsPerPage + rowsPerPage,
-      ),
-    [order, orderBy, page, rowsPerPage],
-  );
-
-  function SizeAndQuantity(row) {
-    const [selectedValue, setSelectedValue] = useState("Nhỏ");
-    const [quantity, setQuantity] = useState(0);
-    const [price, setPrice] = useState(0);
-
-    // This effect will update the price and quantity when selectedValue changes.
-    useEffect(() => {
-        const selectedSize = row.sizes.find(item => item.size === selectedValue);
-        if (selectedSize) {
-            setQuantity(selectedSize.sold_quantity);
-            setPrice(selectedSize.price);
-        }
-    }, [selectedValue, row.sizes]);
-
-    const handleSizeChange = (event) => {
-        setSelectedValue(event.target.value);
-    };
-
-    return (
-        <>
-            <TableCell align='center'>
-                <select
-                    value={selectedValue}
-                    onChange={handleSizeChange}
-                    className="form-select form-select"
-                    id={`size-select-${row.beverage_name}`}
-                >
-                    {row.sizes.map((size, index) => (
-                        <option key={index} value={size.size}>{size.size}</option>
-                    ))}
-                </select>
-            </TableCell>
-            <TableCell align='center' style={{ fontSize: '12px' }}>{price}</TableCell>
-            <TableCell align='center' style={{ fontSize: '12px' }}>{quantity}</TableCell>
-        </>
-    );
+    function SizeAndQuantity({row}) {
+      const [selectedValue, setSelectedValue] = useState("Nhỏ"); // Default size
+      const [quantity, setQuantity] = useState(0);
+      const [price, setPrice] = useState(0);
+  
+      useEffect(() => {
+          const selectedSize = row.sizes.find(item => item.size === selectedValue);
+          if (selectedSize) {
+              setQuantity(selectedSize.sold_quantity);
+              setPrice(selectedSize.price);
+          }
+      }, [selectedValue, row.sizes]);
+  
+      const handleSizeChange = (event) => {
+          setSelectedValue(event.target.value);
+      };
+  
+      return (
+          <>
+              <TableCell align='center'>
+                  <select
+                      value={selectedValue}
+                      onChange={handleSizeChange}
+                      className="form-select"
+                      id={`size-select-${row.beverage_name}`}
+                  >
+                      {row.sizes.map((size, index) => (
+                          <option key={index} value={size.size}>{size.size}</option>
+                      ))}
+                  </select>
+              </TableCell>
+              <TableCell align='center' style={{ fontSize: '12px' }}>{price}</TableCell>
+              <TableCell align='center' style={{ fontSize: '12px' }}>{quantity}</TableCell>
+          </>
+      );
   }
 
   return (
@@ -370,7 +385,7 @@ function Products() {
                   orderBy={orderBy}
                   onSelectAllClick={handleSelectAllClick}
                   onRequestSort={handleRequestSort}
-                  rowCount={pd_data.length}
+                  rowCount={productData.length}
                 />
                   <TableBody>
                     {visibleRows.map((row, index) => {
@@ -411,7 +426,7 @@ function Products() {
                             >
                               {row.beverage_name}
                             </TableCell>
-                            {SizeAndQuantity(row)}
+                            <SizeAndQuantity row={row} />
                             <TableCell><button type="button" class="btn btn-outline-secondary"><VisibilityIcon></VisibilityIcon></button></TableCell>
                             <TableCell><button type="button" class="btn btn-outline-primary"><EditIcon></EditIcon></button></TableCell>
                             <TableCell><button type="button" class="btn btn-outline-danger"><DeleteIcon></DeleteIcon></button></TableCell>
@@ -429,7 +444,7 @@ function Products() {
             <TablePagination
               rowsPerPageOptions={[5, 10]}
               component="div"
-              count={pd_data.length}
+              count={productData.length}
               rowsPerPage={rowsPerPage}
               page={page}
               onPageChange={handleChangePage}
@@ -439,6 +454,5 @@ function Products() {
         </Paper>
       </Box>
     </div>
-  );
-}
+  );}
 export default Products;
