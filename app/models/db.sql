@@ -753,63 +753,37 @@ BEGIN
 END;
 GO
 
--- -- Test procedure GetEmployeeByFilter
--- DECLARE @job_type NVARCHAR(100);
--- SET @job_type = N'Phục vụ';
--- EXEC dbo.proc_GetEmployeeByFilter @job_type;
 
+IF OBJECT_ID('dbo.Average_Salary_Emps_As_Job_Type', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.Average_Salary_Emps_As_Job_Type;
+GO
 
--- 2. Create stored procedure to get employee details
--- IF OBJECT_ID('dbo.proc_GetEmployeeDetailsFilter', 'P') IS NOT NULL
---     DROP PROCEDURE dbo.proc_GetEmployeeDetailsFilter;
--- GO
-
--- CREATE PROCEDURE GetEmployeeDetailsFilter
---     @jobType NVARCHAR(100) = NULL,
---     @gender NVARCHAR(10) = NULL
--- AS
--- BEGIN
---     SELECT 
---         e.ssn,
---         e.cccd,
---         e.address,
---         e.job_type,
---         e.date_of_work,
---         e.gender,
---         e.date_of_birth,
---         e.last_name,
---         e.middle_name,
---         e.first_name,
---         e.image_url,
---         COUNT(DISTINCT epn.phone_number) AS phone_numbers_count,
---         COUNT(DISTINCT ed.name) AS dependents_count
---     FROM 
---         employee e
---     LEFT JOIN 
---         employee_phone_number epn ON e.ssn = epn.ssn
---     LEFT JOIN 
---         employee_dependent ed ON e.ssn = ed.ssn
---     WHERE 
---         (@jobType IS NULL OR e.job_type = @jobType)
---         AND (@gender IS NULL OR e.gender = @gender)
---     GROUP BY 
---         e.ssn, e.cccd, e.address, e.job_type, e.date_of_work, 
---         e.gender, e.date_of_birth, e.last_name, e.middle_name, 
---         e.first_name, e.image_url
---     ORDER BY 
---         e.last_name, e.first_name;
--- END
--- GO
-
-
-
-
-
-
-
-
-
-
+CREATE PROCEDURE Average_Salary_Emps_As_Job_Type (
+    @Nums_of_Emps INT,
+    @Type NVARCHAR(50)
+)
+AS
+BEGIN
+    IF @Type = 'Full-time'
+    BEGIN
+        SELECT AVG(fe.month_salary) AS Avg_salary, COUNT(fe.ssn) AS Num_of_Emps, e.job_type
+        FROM employee e, full_time_employee fe
+        WHERE e.ssn = fe.ssn
+        GROUP BY e.job_type
+        HAVING COUNT(fe.ssn) > @Nums_of_Emps
+        ORDER BY Num_of_Emps;
+    END
+    ELSE
+    BEGIN
+        SELECT AVG(pe.hourly_salary) AS Avg_salary, COUNT(pe.ssn) AS Num_of_Emps, e.job_type
+        FROM employee e, part_time_employee pe
+        WHERE e.ssn = pe.ssn
+        GROUP BY e.job_type
+        HAVING COUNT(pe.ssn) > @Nums_of_Emps
+        ORDER BY Num_of_Emps;
+    END
+END;
+GO
 
 
 -- Function
