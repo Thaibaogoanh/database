@@ -43,7 +43,7 @@ function Login() {
                         <label className={clsx(style.label)}>Password</label>
                         <input ref={Password} type="password" placeholder="Password" />
 
-                        <button ref={loginRef} className={clsx(style.btn, 'btn btn-primary btn-block btn-large')}>
+                        <button ref={loginRef} className={clsx(style.btn, 'btn btn-secondary btn-large')}>
                             Login
                         </button>
                     </div>
