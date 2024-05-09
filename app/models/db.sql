@@ -543,7 +543,7 @@ BEGIN
 END;
 GO
 
-
+-- Trigger to update total price in size_order table
 IF OBJECT_ID('dbo.Calculate_SubPrice', 'TR') IS NOT NULL
     DROP TRIGGER dbo.Calculate_SubPrice;
 GO
@@ -632,7 +632,6 @@ GO
 
 
 -- Trigger tính tổng tiền trong hóa đơn và tích điểm cho khách hàng:
-
 IF OBJECT_ID('dbo.Calculate_TotalPrice', 'TR') IS NOT NULL
     DROP TRIGGER dbo.Calculate_TotalPrice;
 GO
@@ -1032,7 +1031,9 @@ VALUES
 INSERT INTO [employee_dependent] ([ssn], [name], [relationship], [phone_number], [address], [date_of_birth], [gender])
 VALUES 
 (1, N'Nguyễn Thị Bình', N'Con', '0987654321', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', '2010-05-15', N'FEMALE'),
+(1, N'Nguyễn Trần An Nhiên', N'Con', '0987624321', N'123 Đường Mê Linh, Thành phố Hồ Chí Minh', '2001-09-08', N'MALE'),
 (2, N'Trần Văn Nam', N'Con', '0987654322', N'456 Đường Lê Lợi, Thành phố Hà Nội', '2008-07-20', N'MALE'),
+(2, N'Nguyễn Thị Yến', N'Con', '0922654321', N'456 Đường Lê Lợi, Thành phố Hà Nội', '2004-05-17', N'FEMALE'),
 (3, N'Phạm Thị Hương', N'Vợ', '0987654323', N'789 Đường Phan Xích Long, Thành phố Đà Nẵng', '1985-10-10', N'FEMALE'),
 (4, N'Lê Tuấn Anh', N'Con', '0987654324', N'987 Đường Hùng Vương, Thành phố Cần Thơ', '2012-12-25', N'MALE'),
 (5, N'Vũ Thị Hương', N'Con', '0987654325', N'321 Đường Lê Duẩn, Thành phố Hải Phòng', '2015-03-05', N'FEMALE'),
