@@ -158,7 +158,7 @@ function Products() {
           </TableCell>
           <TableCell
             key='price'
-            align='right'
+            align='center'
             padding='normal'
             sortDirection={orderBy === 'price' ? order : false}
             style={{ fontSize: '14px' }}

@@ -1,92 +1,56 @@
-import React, { useState } from 'react';
-import { Box, Button, Paper, TextField, Typography } from '@mui/material';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import React, { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import clsx from 'clsx';
+import style from './Login.module.scss';
+import logo from '../../img/logoCoffee.png'
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#4B6587',
-    },
-  },
-});
+function Login() {
+    const loginRef = useRef(null);
+    const Username = useRef(null);
+    const Password = useRef(null);
+    const navigate = useNavigate();
 
-const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+    async function checkAuth(username, password) {
+            if (username === 'admin' && password === '123456') {
+                navigate('/dashboard');
+            }
+    };
 
-  const handleLogin = () => {
-    // Xử lý logic đăng nhập ở đây
-    console.log('Email:', email);
-    console.log('Password:', password);
-  };
+    useEffect(() => {
+      loginRef.current.onclick = () => {
+          checkAuth(Username.current.value, Password.current.value);
+      };
 
-  return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-        }}
-      >
-        <Paper
-          sx={{
-            p: 3,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Typography component='h1' variant='h5'>
-            Login
-          </Typography>
-          {/* Form */}
-          <Box
-            component='form'
-            sx={{
-              m: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleLogin();
-            }}
-          >
-            {/* Email */}
-            <TextField
-              required
-              id='email'
-              label='E-mail'
-              fullWidth
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+      Password.current.addEventListener('keypress', (event) => {
+          if (event.key === 'Enter') {
+              checkAuth(Username.current.value, Password.current.value);
+          }
+      });
+     
 
-            {/* Password */}
-            <TextField
-              required
-              fullWidth
-              id='password'
-              label='Password'
-              type='password'
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+  }, []);
 
-            {/* Login Button */}
-            <Button variant='contained' type='submit' sx={{ m: 2 }} fullWidth>
-              Login
-            </Button>
-          </Box>
-        </Paper>
-      </Box>
-    </ThemeProvider>
-  );
-};
+    return (
+        <div className={clsx(style.wrapper)}>
+            <div className={clsx(style.subwrapper)}>
+              <img src={logo} alt="Logo" className={clsx(style.logo)} />
+                <div className={clsx(style.login)}>
+                    <h1>Login</h1>
+                    <div>
+                        <label className={clsx(style.label)}>Uername</label>
+                        <input ref={Username} type="text" placeholder="Username" autoFocus/>
+
+                        <label className={clsx(style.label)}>Password</label>
+                        <input ref={Password} type="password" placeholder="Password" />
+
+                        <button ref={loginRef} className={clsx(style.btn, 'btn btn-primary btn-block btn-large')}>
+                            Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default Login;
