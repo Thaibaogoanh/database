@@ -57,11 +57,3 @@ Once the application is running, you can access it by opening your web browser a
 ## API Swagger
 
 You can access the API Swagger documentation by navigating to `http://localhost:<your-local-port>/api/v1/api-docs`.
-
-## Contributing
-
-Contributions are welcome! If you find any issues or have suggestions, please feel free to open an issue or submit a pull request.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
