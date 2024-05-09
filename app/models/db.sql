@@ -262,8 +262,7 @@ BEGIN
       [order_id] INT NOT NULL,
       [comment] NVARCHAR(500) DEFAULT NULL,
       PRIMARY KEY ([order_id]),
-      CONSTRAINT [fk_customer_order_customer] FOREIGN KEY ([customer_id]) REFERENCES [customer] ([id]) ON DELETE CASCADE,
-      CONSTRAINT [fk_customer_order_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id])
+      CONSTRAINT [fk_customer_order_order] FOREIGN KEY ([order_id]) REFERENCES [order] ([id]) ON DELETE CASCADE
     );
 END;
 
