@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { alpha } from '@mui/material/styles';
 import Table from '@mui/material/Table';
@@ -6,13 +6,11 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
-import EditEmployee from './EditEmployee';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import TableSortLabel from '@mui/material/TableSortLabel';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
+import Modal from '@mui/material/Modal';
+import { Toolbar, Typography } from '@mui/material';
 import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -20,7 +18,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { visuallyHidden } from '@mui/utils';
 import clsx from 'clsx';
 import MenuItem from '@mui/material/MenuItem';
-
+import VisibilityIcon from '@mui/icons-material/Visibility'; // Adjust the import path if necessary
+import EditIcon from '@mui/icons-material/Edit';
 import styles from "./Employee.module.scss";
 import Button from '@mui/material/Button';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
@@ -31,78 +30,204 @@ import { AdapterDayjs } from '@mui/x-date-pickers-pro/AdapterDayjs';
 import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
 import { Box, TextField } from '@mui/material';
 import axios from 'axios';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import EditIcon from '@mui/icons-material/Edit';
+
+import EditEmployeeModal from './EditEmployee';
 
 function Employee() {
   const API_URL = "http://localhost:5000/api/v1/employees";
-  const [employeeData, setEmployeeData] = React.useState([]);
-  const [order, setOrder] = React.useState('asc');
-  const [orderBy, setOrderBy] = React.useState('cccd');
-  const [selected, setSelected] = React.useState([]);
-  const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(5);
-  const [dateRange, setDateRange] = React.useState([null, null]);
-  const [searchInput, setSearchInput] = React.useState('');
-  const [filters, setFilters] = React.useState({
+  const [employeeData, setEmployeeData] = useState([]);
+  const [order, setOrder] = useState('asc');
+  const [orderBy, setOrderBy] = useState('cccd');
+  const [selected, setSelected] = useState([]);
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [searchInput, setSearchInput] = useState('');
+  const [selectedEmployeeData, setSelectedEmployeeData] = useState(null);
+
+  const [filters, setFilters] = useState({
     jobType: '',
     gender: '',
   });
-  const [editModalOpen, setEditModalOpen] = React.useState(false);
-  const [selectedEmployee, setSelectedEmployee] = React.useState(null);
-  React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        let response;
-        let queryParams = '';
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [productData, setProductData] = useState([]);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-        if (dateRange[0] !== null && dateRange[1] !== null) {
-          const startDate = dateRange[0].format('YYYY-MM-DD');
-          const endDate = dateRange[1].format('YYYY-MM-DD');
-          queryParams += `&dob=${startDate}&dob=${endDate}`;
-        }
+  const [newEmployeeData, setNewEmployeeData] = useState({
+    cccd: '',
+    address: '',
+    job_type: '',
+    date_of_work: '',
+    gender: '',
+    date_of_birth: '',
+    last_name: '',
+    middle_name: '',
+    first_name: '',
+    super_ssn: '',
+    image: null, // Thêm trường hình ảnh vào đối tượng
+  });
 
-        if (searchInput.trim() !== '') {
-          queryParams += `&search=${encodeURIComponent(searchInput.trim())}`;
-        }
+  // State for modal open/close
+  const [total, setTotal] = useState();
+  const [modalOpen, setModalOpen] = useState(false);
+  const fetchData = async () => {
+    try {
+      let queryParams;
+   
 
-        if (filters.jobType !== '') {
-          queryParams += `&job_type=${encodeURIComponent(filters.jobType)}`;
-        }
-
-        if (filters.gender !== '') {
-          queryParams += `&gender=${encodeURIComponent(filters.gender)}`;
-        }
-
-        response = await axios.get(`${API_URL}?${queryParams}`);
-        setEmployeeData(response.data.data);
-      } catch (err) {
-        console.error("Failed to fetch employees:", err);
+      if (searchInput.trim() !== '') {
+        queryParams += `&search=${encodeURIComponent(searchInput.trim())}`;
       }
-    };
+      if (filters.jobType !== '') {
+        queryParams += `&jobType=${encodeURIComponent(filters.jobType)}`;
+        console.log(queryParams);
+      }
 
+      if (filters.gender !== '') {
+        queryParams += `&gender=${encodeURIComponent(filters.gender)}`;
+        console.log(queryParams);
+      }
+      const response = await axios.get(`${API_URL}?page=${page}&perPage=${rowsPerPage}&${queryParams}`);
+      
+      setProductData(response.data.data);
+      setTotal(response.data.total);
+
+      setEmployeeData(response.data.data);
+    } catch (err) {
+      console.error("Failed to fetch employees:", err);
+    }
+  };
+  
+  useEffect(() => {
     fetchData();
-  }, [dateRange, searchInput, filters]);
+  }, [ searchInput, filters,dateRange, page, rowsPerPage,selected]);
+
+  const handleNewEmployeeChange = (event) => {
+    const { name, value } = event.target;
+    setNewEmployeeData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+ 
+
+  const handleImageChange = (event) => {
+    const imageFile = event.target.files[0];
+    setNewEmployeeData((prevData) => ({
+      ...prevData,
+      image: imageFile,
+    }));
+     // Kiểm tra tệp ảnh sau khi đã được chọn
+  // const reader = new FileReader();
+  // reader.onload = (e) => {
+  //   const imageSrc = e.target.result;
+  //   console.log("Tệp ảnh đã được tải lên thành công:", imageSrc);
+  //   // Ở đây, bạn có thể sử dụng imageSrc để hiển thị trước ảnh nếu cần
+  // };
+  // reader.readAsDataURL(imageFile);
+  };
+
+
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setIsModalOpen(false);
+
+  };
+const emptyRows =page > 0 ? Math.max(0, (1 + page) * rowsPerPage - productData.length) : 0;
+  const handleCreateEmployee = async () => {
+    try {
+      console.log(newEmployeeData.cccd);
+      console.log(newEmployeeData.super_ssn);
+      // 1. Xác thực dữ liệu
+      if (!newEmployeeData.image) {
+        console.error("Image is required");
+        return;
+      }
+      
+      // 2. Tạo một FormData object để gửi dữ liệu
+      const formData = new FormData();
+      formData.append("image", newEmployeeData.image); // Đảm bảo rằng tên trường ảnh trùng với tên trường trong API
+      formData.append("cccd", newEmployeeData.cccd);
+      formData.append("address", newEmployeeData.address);
+      formData.append("job_type", newEmployeeData.job_type);
+      formData.append("date_of_work", newEmployeeData.date_of_work);
+      formData.append("gender", newEmployeeData.gender);
+      formData.append("date_of_birth", newEmployeeData.date_of_birth);
+      formData.append("last_name", newEmployeeData.last_name);
+      formData.append("middle_name", newEmployeeData.middle_name);
+      formData.append("first_name", newEmployeeData.first_name);
+      formData.append("super_ssn", newEmployeeData.super_ssn);
+  
+      // 3. Gửi yêu cầu POST tới API
+      const response = await axios.post(API_URL, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+  
+      // 4. Xử lý phản hồi từ API
+      const newEmployee = response.data.data;
+      setEmployeeData([...employeeData, newEmployee]);
+      setModalOpen(false);
+    } catch (error) {
+      console.error("Failed to create employee:", error);
+      console.log(error);
+    }
+  };
+  
+
+  const [initialSsn, setInitialSsn] = useState(null);
+
   const handleEdit = (employee) => {
-    setSelectedEmployee(employee);
+    // console.log(employee);
+    setSelectedEmployeeData(employee); 
+   // setSelectedEmployee(employee);
+    setInitialSsn(employee); 
+
     setEditModalOpen(true);
+    
   };
 
   const handleCloseEditModal = () => {
     setEditModalOpen(false);
     setSelectedEmployee(null);
   };
+
   const handleSaveEdit = async (editedData) => {
     try {
-      await axios.put(`${API_URL}/${editedData.id}`, editedData);
-      // Refresh employee data after update
-      const response = await axios.get(API_URL);
-      setEmployeeData(response.data.data);
+      // Tạo một FormData object để gửi dữ liệu
+      console.log(editedData.cccd);
+      console.log(editedData.image);
+      const formData = new FormData();
+      formData.append("cccd", editedData.cccd||null);
+      formData.append("address", editedData.address||null);
+      formData.append("job_type", editedData.job_type||null);
+      formData.append("date_of_birth", editedData.date_of_birth||null);
+      formData.append("super_ssn", editedData.super_ssn||null);
+      formData.append("image", editedData.image); // Thêm hình ảnh vào FormData
+      // Gửi yêu cầu PUT tới API
+      
+      const response = await axios.put(`${API_URL}/${initialSsn.ssn}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Xử lý phản hồi từ API
+      setSelectedEmployee(null);
+      setEmployeeData([...employeeData,response.data.data]);
+      setEditModalOpen(false);
+      fetchData();
+     
     } catch (err) {
       console.error("Failed to update employee:", err);
+      console.log(err);
     }
   };
+
   const stableSort = (array, comparator) => {
+    if (!array) return []; 
     const stabilizedThis = array.map((el, index) => [el, index]);
     stabilizedThis.sort((a, b) => {
       const order = comparator(a[0], b[0]);
@@ -138,21 +263,23 @@ function Employee() {
     [order, orderBy, page, rowsPerPage, employeeData],
   );
 
-  const handleDateChange = (newValue) => {
-    setDateRange(newValue);
+  const handleModalOpen = (employee) => {
+    setSelectedEmployeeData(employee);
+    setIsModalOpen(true);
+    setModalOpen(true);
   };
-
   const handleSelectAllClick = (event) => {
-    if (event.target.checked) {
-      const newSelected = employeeData.map((n) => n.ssn);
-      setSelected(newSelected);
-      return;
+    if (employeeData && employeeData.length > 0 && event.target.checked) {
+        const newSelected = employeeData.map((n) => n.ssn);
+        setSelected(newSelected);
+        return;
     }
     setSelected([]);
-  };
+};
+
 
   const isSelected = (ssn) => selected.indexOf(ssn) !== -1;
-
+  
   const handleClick = (event, ssn) => {
     const selectedIndex = selected.indexOf(ssn);
     let newSelected = [];
@@ -178,7 +305,7 @@ function Employee() {
   };
 
   const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+    setRowsPerPage(parseInt(event.target.value));
     setPage(0);
   };
 
@@ -190,18 +317,18 @@ function Employee() {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(API_URL, {
-        data: { ids: selected }
+      // Truyền danh sách các SSN đã chọn vào body của yêu cầu delete
+ 
+      const response = await axios.delete(API_URL, {
+        data: { ids: selected } // Trích xuất danh sách SSN từ selected
       });
-      // Refresh employee data after deletion
-      const response = await axios.get(API_URL);
-      setEmployeeData(response.data.data);
-      setSelected([]);
+    
+      setSelected([{}]);
     } catch (err) {
       console.error("Failed to delete employees:", err);
     }
   };
-
+  
   const handleSearchInputChange = (event) => {
     setSearchInput(event.target.value);
   };
@@ -213,9 +340,30 @@ function Employee() {
       [name]: value,
     }));
   };
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [addEmployeeModalOpen, setAddEmployeeModalOpen] = useState(false);
+const [viewEmployeeModalOpen, setViewEmployeeModalOpen] = useState(false);
+  
+const handleAddEmployeeModalOpen = () => {
+  setAddEmployeeModalOpen(true);
+};
+
+const handleViewEmployeeModalOpen = (employee) => {
+  setSelectedEmployeeData(employee); // Truyền dữ liệu nhân viên vào modal
+  setViewEmployeeModalOpen(true); // Mở modal
+};
+
+const handleAddEmployeeModalClose = () => {
+  setAddEmployeeModalOpen(false);
+};
+
+const handleViewEmployeeModalClose = () => {
+  setViewEmployeeModalOpen(false);
+};
+
 
   return (
-    
     <div className={clsx(styles.root)}>
       <div className={clsx(styles.searchBar)}>
         <div className={clsx(styles.searchIcon)}>
@@ -244,9 +392,11 @@ function Employee() {
           className={clsx(styles.filterSelect)}
         >
           <MenuItem value="">All</MenuItem>
-          <MenuItem value="Full-time">Full-time</MenuItem>
-          <MenuItem value="Part-time">Part-time</MenuItem>
-          <MenuItem value="Contract">Contract</MenuItem>
+          <MenuItem value="Phục vụ" style={{ fontFamily: 'Roboto, sans-serif' }}>Phục vụ</MenuItem>
+<MenuItem value="Pha chế" style={{ fontFamily: 'Roboto, sans-serif' }}>Pha chế</MenuItem>
+<MenuItem value="Bảo vệ" style={{ fontFamily: 'Roboto, sans-serif' }}>Bảo vệ</MenuItem>
+<MenuItem value="Thu ngân" style={{ fontFamily: 'Roboto, sans-serif' }}>Thu ngân</MenuItem>
+
         </TextField>
         <TextField
           select
@@ -264,25 +414,12 @@ function Employee() {
           <MenuItem value="Other">Other</MenuItem>
         </TextField>
       </div>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <DateRangePicker
-          startText="From"
-          endText="To"
-          value={dateRange}
-          onChange={handleDateChange}
-          renderInput={(startProps, endProps) => (
-            <React.Fragment>
-              <TextField {...startProps} size="small" />
-              <Box sx={{ mx: 2 }}> to </Box>
-              <TextField {...endProps} size="small" />
-            </React.Fragment>
-          )}
-        />
-      </LocalizationProvider>
+    
       <Paper className={clsx(styles.paper)}>
         <EnhancedTableToolbar
           numSelected={selected.length}
           onDelete={handleDelete}
+          onAdd={handleModalOpen}
         />
         <TableContainer>
           <Table
@@ -300,8 +437,8 @@ function Employee() {
               rowCount={employeeData.length}
             />
             <TableBody>
-              {visibleRows.map((row, index) => {
-                const { ssn, cccd, last_name, address, job_type, date_of_work, gender, date_of_birth, middle_name, first_name, imageURL } = row;
+            {employeeData && employeeData.length > 0 && visibleRows.map((row, index) =>{
+                const {ssn, cccd, address, job_type, date_of_work, gender, date_of_birth, last_name, middle_name, first_name, image_url } = row;
                 const labelId = `enhanced-table-checkbox-${index}`;
 
                 return (
@@ -309,67 +446,215 @@ function Employee() {
                     hover
                     role="checkbox"
                     tabIndex={-1}
-                    key={cccd}
-                    selected={isSelected(cccd)}
+                    key={ssn}
+                    selected={isSelected(ssn)}
                   >
                     <TableCell padding="checkbox">
                       <Checkbox
                         color="primary"
-                        checked={isSelected(cccd)}
-                        onChange={(event) => handleClick(event, cccd)}
+                        checked={isSelected(ssn)}
+                        onChange={(event) => handleClick(event, ssn)}
                         inputProps={{
                           'aria-labelledby': labelId,
                         }}
                       />
                     </TableCell>
-                    <TableCell align="center">{cccd}</TableCell>
-                    <TableCell align="center">{address}</TableCell>
-                    <TableCell align="center">{job_type}</TableCell>
-                    <TableCell align="center">{date_of_work}</TableCell>
-                    <TableCell align="center">{gender}</TableCell>
-                    <TableCell align="center">{date_of_birth}</TableCell>
-                    <TableCell align="center">{last_name}</TableCell>
-                    <TableCell align="center">{middle_name}</TableCell>
-                    <TableCell align="center">{first_name}</TableCell>
                     <TableCell align="center">
-                      <img src={imageURL} alt="Employee" className={styles.employeeImage} />
+                      <img src={image_url} alt="Employee" className={styles.employeeImage} />
+                    </TableCell>
+                    <TableCell align="center">{cccd}</TableCell>
+                    <TableCell align="center" >{job_type}</TableCell>
+                    <TableCell align="center">{gender}</TableCell>
+                    <TableCell align="center" >
+                      {`${last_name} ${middle_name} ${first_name}`}
                     </TableCell>
                     <TableCell align="center">
-                      <IconButton>
-                        <VisibilityIcon />
+                      <IconButton onClick={() => handleViewEmployeeModalOpen(row)}>
+                      <VisibilityIcon/>
                       </IconButton>
-                      <IconButton>
-                        <EditIcon />
-                        <EditEmployee
-        open={editModalOpen}
-        onClose={handleCloseEditModal}
-        employeeData={selectedEmployee}
-        onSave={handleSaveEdit}
-      />
+                      <IconButton onClick={() => handleEdit(row)}>
+                     <EditIcon/>
                       </IconButton>
+                     
                     </TableCell>
                   </TableRow>
                 );
               })}
+              {emptyRows > 0 && (
+                        <TableRow>
+                        <TableCell colSpan={6} />
+                        </TableRow>
+                    )}
             </TableBody>
           </Table>
         </TableContainer>
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={employeeData.length}
+          count={total}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </Paper>
+      <EditEmployeeModal
+        open={editModalOpen}
+        onClose={handleCloseEditModal}
+        employee={selectedEmployeeData}
+        onSave={(editedData) => handleSaveEdit(editedData, initialSsn)}
+      />
+        {/* Add Employee Modal */}
+        <Modal
+  open={modalOpen}
+  onClose={handleModalClose}
+  aria-labelledby="modal-title"
+  aria-describedby="modal-description"
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }}
+  slotProps={{
+    backdrop: {
+      className: 'modalBackdrop' // Thêm lớp CSS cho backdrop
+    }
+  }}
+>
+  <div className={clsx(styles.modalContent, 'modalContent')}>
+    <Typography variant="h6" id="modal-title">
+    </Typography>
+    <form className={styles.form}>
+
+      <TextField
+        label="Cccd"
+        name="cccd"
+        value={newEmployeeData.cccd}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <TextField
+        label="Address"
+        name="address"
+        value={newEmployeeData.address}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <TextField
+        label="Job Type"
+        name="job_type"
+        value={newEmployeeData.job_type}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <TextField
+        label="Date of Work"
+        name="date_of_work"
+        value={newEmployeeData.date_of_work}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <TextField
+        label="Gender"
+        name="gender"
+        value={newEmployeeData.gender}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <TextField
+        label="Date of Birth"
+        name="date_of_birth"
+        value={newEmployeeData.date_of_birth}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <TextField
+        label="Last Name"
+        name="last_name"
+        value={newEmployeeData.last_name}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <TextField
+        label="Middle Name"
+        name="middle_name"
+        value={newEmployeeData.middle_name}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <TextField
+        label="First Name"
+        name="first_name"
+        value={newEmployeeData.first_name}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <TextField
+        label="Super SSN"
+        name="super_ssn"
+        value={newEmployeeData.super_ssn}
+        onChange={handleNewEmployeeChange}
+        fullWidth
+      />
+      <input
+        accept="image/*"
+        id="image-upload"
+        type="file"
+        onChange={handleImageChange}
+        style={{ display: 'none' }}
+      />
+      <label htmlFor="image-upload">
+        <Button variant="contained" component="span">
+          Upload Image
+        </Button>
+      </label>
+      <Button variant="contained" color="primary" onClick={handleCreateEmployee}>
+        Save
+      </Button>
+    </form>
+  </div>
+</Modal>
+
+      <Modal
+  open={viewEmployeeModalOpen}
+  onClose={handleViewEmployeeModalClose}
+  aria-labelledby="modal-title"
+  aria-describedby="modal-description"
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }}
+>
+  <div className={clsx(styles.modalContent, 'modalContent')}>
+    <Typography variant="h6" id="modal-title">
+    
+    </Typography>
+    {selectedEmployeeData && (
+      <div>
+        {selectedEmployeeData.image_url && (
+          <img src={selectedEmployeeData.image_url} alt="Employee" />
+        )}
+        <p>CCCD: {selectedEmployeeData.cccd}</p>
+        <p>Address: {selectedEmployeeData.address}</p>
+        <p>Job Type: {selectedEmployeeData.job_type}</p>
+        <p>Date of Work: {selectedEmployeeData.date_of_work}</p>
+        <p>Gender: {selectedEmployeeData.gender}</p>
+        <p>Date of Birth: {selectedEmployeeData.date_of_birth}</p>
+        <p>Name: {`${selectedEmployeeData.last_name} ${selectedEmployeeData.middle_name} ${selectedEmployeeData.first_name}`}</p>
+
+        <p>Super SSN: {selectedEmployeeData.super_ssn}</p>
+      
+      </div>
+    )}
+  </div>
+</Modal>
+
     </div>
   );
 }
-
 function EnhancedTableToolbar(props) {
-  const { numSelected, onDelete } = props;
+  const { numSelected, onDelete, onAdd } = props;
 
   return (
     <Toolbar
@@ -414,6 +699,7 @@ function EnhancedTableToolbar(props) {
           size="small"
           startIcon={<AddCircleOutlineIcon />}
           className={clsx(styles.addButton)}
+          onClick={onAdd} // Thêm sự kiện onClick vào nút "New Employee"
         >
           New Employee
         </Button>
@@ -425,6 +711,7 @@ function EnhancedTableToolbar(props) {
 EnhancedTableToolbar.propTypes = {
   numSelected: PropTypes.number.isRequired,
   onDelete: PropTypes.func.isRequired,
+  onAdd: PropTypes.func.isRequired, // Thêm kiểu prop và yêu cầu prop onAdd
 };
 
 function EnhancedTableHead(props) {
@@ -449,31 +736,19 @@ function EnhancedTableHead(props) {
           />
         </TableCell>
         <TableCell
-          key='cccd'
           align='center'
-          padding='none'
-          sortDirection={orderBy === 'cccd' ? order : false}
+          padding='normal'
           style={{ fontSize: '14px' }}
         >
-          <TableSortLabel
-            active={orderBy === 'cccd'}
-            direction={orderBy === 'cccd' ? order : 'asc'}
-            onClick={createSortHandler('cccd')}
-          >
-            CCCD
-            {orderBy === 'cccd' ? (
-              <Box component="span" sx={visuallyHidden}>
-                {order === 'desc' ? 'sorted descending' : 'sorted ascending'}
-              </Box>
-            ) : null}
-          </TableSortLabel>
+          Image
         </TableCell>
+       
         <TableCell
           align='center'
           padding='normal'
           style={{ fontSize: '14px' }}
         >
-          Address
+          CCCD
         </TableCell>
         <TableCell
           align='center'
@@ -487,13 +762,7 @@ function EnhancedTableHead(props) {
           padding='normal'
           style={{ fontSize: '14px' }}
         >
-          Date of Work
-        </TableCell>
-        <TableCell
-          align='center'
-          padding='normal'
-          style={{ fontSize: '14px' }}
-        >
+
           Gender
         </TableCell>
         <TableCell
@@ -501,35 +770,8 @@ function EnhancedTableHead(props) {
           padding='normal'
           style={{ fontSize: '14px' }}
         >
-          Date of Birth
-        </TableCell>
-        <TableCell
-          align='center'
-          padding='normal'
-          style={{ fontSize: '14px' }}
-        >
-          Last Name
-        </TableCell>
-        <TableCell
-          align='center'
-          padding='normal'
-          style={{ fontSize: '14px' }}
-        >
-          Middle Name
-        </TableCell>
-        <TableCell
-          align='center'
-          padding='normal'
-          style={{ fontSize: '14px' }}
-        >
-          First Name
-        </TableCell>
-        <TableCell
-          align='center'
-          padding='normal'
-          style={{ fontSize: '14px' }}
-        >
-          Image
+       
+          Name
         </TableCell>
         <TableCell
           align='center'
