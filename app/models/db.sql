@@ -753,7 +753,7 @@ GO
 
 
 If OBJECT_ID('dbo.Ranked_Cost_of_Supplies', 'P') IS NOT NULL
-	DROP procedure dbo.Ranked_Cost_of_Supplies;
+	DROP PROCEDURE dbo.Ranked_Cost_of_Supplies;
 GO
 
 CREATE PROCEDURE Ranked_Cost_of_Supplies (
@@ -765,7 +765,7 @@ BEGIN
 	FROM supply AS s, supplier_item AS si
 	WHERE s.product_name = si.product_name
 	GROUP BY s.supplier_name
-	HAVING Sum(quantity) > @Amount
+	HAVING SUM(quantity) > @Amount
 	ORDER BY Total_Cost;
 END;
 GO
