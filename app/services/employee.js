@@ -67,7 +67,7 @@ const Employee = {
           ssn: result.output.ssn,
           ...req.body,
           super_ssn: super_ssn === "" ? null : super_ssn,
-          imageURL: `${process.env.URL}/employees/images/${req.file.filename}`,
+          image_url: `${process.env.URL}/employees/images/${req.file.filename}`,
         },
       });
     } catch (error) {
