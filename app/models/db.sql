@@ -752,34 +752,21 @@ END;
 GO
 
 
-IF OBJECT_ID('dbo.Average_Salary_Emps_As_Job_Type', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.Average_Salary_Emps_As_Job_Type;
+If OBJECT_ID('dbo.Ranked_Cost_of_Supplies', 'P') IS NOT NULL
+	DROP procedure dbo.Ranked_Cost_of_Supplies;
 GO
 
-CREATE PROCEDURE Average_Salary_Emps_As_Job_Type (
-    @Nums_of_Emps INT,
-    @Type NVARCHAR(50)
+CREATE PROCEDURE Ranked_Cost_of_Supplies (
+	@Amount INT
 )
 AS
 BEGIN
-    IF @Type = 'Full-time'
-    BEGIN
-        SELECT AVG(fe.month_salary) AS Avg_salary, COUNT(fe.ssn) AS Num_of_Emps, e.job_type
-        FROM employee e, full_time_employee fe
-        WHERE e.ssn = fe.ssn
-        GROUP BY e.job_type
-        HAVING COUNT(fe.ssn) > @Nums_of_Emps
-        ORDER BY Num_of_Emps;
-    END
-    ELSE
-    BEGIN
-        SELECT AVG(pe.hourly_salary) AS Avg_salary, COUNT(pe.ssn) AS Num_of_Emps, e.job_type
-        FROM employee e, part_time_employee pe
-        WHERE e.ssn = pe.ssn
-        GROUP BY e.job_type
-        HAVING COUNT(pe.ssn) > @Nums_of_Emps
-        ORDER BY Num_of_Emps;
-    END
+	SELECT SUM(s.quantity * si.price) AS Total_Cost, s.supplier_name, SUM(quantity) AS Total_Quantity
+	FROM supply AS s, supplier_item AS si
+	WHERE s.product_name = si.product_name
+	GROUP BY s.supplier_name
+	HAVING Sum(quantity) > @Amount
+	ORDER BY Total_Cost;
 END;
 GO
 
