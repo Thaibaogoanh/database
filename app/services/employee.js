@@ -242,14 +242,15 @@ const Employee = {
     try {
       const { id } = req.params;
       const { cccd, address, job_type, date_of_birth, super_ssn } = req.body;
-
+      console.log(cccd, address, job_type, date_of_birth, super_ssn);
+     
       const pool = await connectDB();
       const request = pool.request();
-
+      console.log(id);
       const oldImageResult = await request.query(
         `SELECT image_url FROM employee WHERE ssn = ${id}`
       );
-
+     
       if (oldImageResult.recordset.length === 0) {
         return res.status(404).json({
           status: 404,
@@ -257,8 +258,9 @@ const Employee = {
           data: null,
         });
       }
-
+     
       const oldImageUrl = oldImageResult.recordset[0].image_url;
+      
 
       if (req.file && oldImageUrl) {
         const oldImageFileName = oldImageUrl.split("/").pop();
@@ -271,7 +273,6 @@ const Employee = {
           fs.unlinkSync(oldImagePath);
         }
       }
-
       if (req.file) {
         request.input(
           "image_url",
@@ -308,7 +309,6 @@ const Employee = {
       console.log(
         `[${timestamp}] \x1b[32mhttp\x1b[0m: ${req.method} ${req.originalUrl} (${res.statusCode} ms) ${res.statusCode}`
       );
-
       return res.status(200).json({
         status: 200,
         message: "Success",
